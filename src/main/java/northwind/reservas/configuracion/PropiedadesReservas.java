@@ -10,11 +10,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Valores que la arquitectura 1.1.0 no documenta y que el despliegue debe dar. Ninguno tiene
+ * Valores que la arquitectura 1.2.0 no documenta y que el despliegue debe dar. Ninguno tiene
  * valor por defecto: sin ellos el Servicio de Reservas no arranca, en lugar de suponerlos.
  *
  * @param zonaHoraria TODO(architecture): la arquitectura no documenta la zona horaria de las sedes;
- *     sin ella no se decide si una franja "está en el pasado" (INV-02), si una reserva es "futura"
+ *     sin ella no se decide si una franja "está en el pasado" (INV-01), si una reserva es "futura"
  *     (INV-04) ni si "ya inició" (ADR-105). Parte: spec § 4.
  * @param token claims del JWT del Proveedor de Identidad Northwind
  */

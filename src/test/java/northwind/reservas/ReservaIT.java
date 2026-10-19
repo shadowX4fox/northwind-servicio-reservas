@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 
-/** CU2, fase 4 — INV-02 a INV-05; ADR-102 y ADR-103. */
+/** CU2, fase 4 — INV-01 e INV-03 a INV-05; ADR-102 y ADR-103. */
 class ReservaIT extends PruebaDeIntegracion {
 
     @Test

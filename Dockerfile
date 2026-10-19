@@ -7,7 +7,7 @@ FROM eclipse-temurin:21-jre-alpine
 
 RUN addgroup -S reservas && adduser -S -G reservas reservas
 WORKDIR /app
-COPY build/libs/servicio-de-reservas-1.1.0.jar servicio-de-reservas.jar
+COPY build/libs/servicio-de-reservas-1.1.1.jar servicio-de-reservas.jar
 USER reservas
 
 # 8080: API (I-02), detrás del ingress con TLS 1.2+; 8081: sondas de vida y disponibilidad.

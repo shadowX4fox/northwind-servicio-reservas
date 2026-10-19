@@ -1,4 +1,4 @@
-# Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.1.0.
+# Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.2.0.
 # Lo que la arquitectura no documenta no tiene valor por defecto: el despliegue lo da o el servicio no arranca.
 
 spring:
@@ -42,7 +42,7 @@ management:
   # TODO(architecture): probabilidad de muestreo de trazas no documentada; se usa la de Spring Boot.
 
 reservas:
-  # TODO(architecture): zona horaria de las sedes no documentada (spec § 4, INV-02 e INV-04).
+  # TODO(architecture): zona horaria de las sedes no documentada (spec § 4, INV-01 e INV-04).
   zona-horaria: ${RESERVAS_ZONA_HORARIA}
   token:
     jwk-set-uri: ${RESERVAS_JWKS_URI}

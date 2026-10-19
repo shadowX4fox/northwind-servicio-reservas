@@ -33,7 +33,7 @@ class CancelacionIT extends PruebaDeIntegracion {
 
     @Test
     void otroMiembroRecibeForbiddenYLaReservaSigueConfirmada() {
-        Respuesta r = cancelar(token("miembro-2"), Map.of("reason", "no es mía"));
+        Respuesta r = cancelar(token("miembro-2"), Map.of("reason", "no es mía, pero la cancelo"));
 
         assertThat(r.estado()).isEqualTo(403);
         assertThat(r.tipo()).startsWith("application/problem+json");
@@ -71,8 +71,24 @@ class CancelacionIT extends PruebaDeIntegracion {
     }
 
     @Test
+    void unMotivoDeMenosDe10CaracteresRespondeValidationFailed() {
+        Respuesta r = cancelar(tokenRecepcion("recepcionista-centro", "centro"), Map.of("reason", "x".repeat(9)));
+
+        assertThat(r.codigo()).isEqualTo("VALIDATION_FAILED");
+        assertThat(estado()).isEqualTo("confirmed");
+    }
+
+    @Test
+    void unMotivoDe10CaracteresEsValido() {
+        Respuesta r = cancelar(tokenRecepcion("recepcionista-centro", "centro"), Map.of("reason", "x".repeat(10)));
+
+        assertThat(r.estado()).isEqualTo(200);
+        assertThat(estado()).isEqualTo("cancelled");
+    }
+
+    @Test
     void recepcionDeOtraSedeRecibeForbidden() {
-        assertThat(cancelar(tokenRecepcion("recepcionista-norte", "norte"), Map.of("reason", "x")).codigo()).isEqualTo("FORBIDDEN");
+        assertThat(cancelar(tokenRecepcion("recepcionista-norte", "norte"), Map.of("reason", "Mantenimiento de la sala")).codigo()).isEqualTo("FORBIDDEN");
         assertThat(estado()).isEqualTo("confirmed");
     }
 
@@ -80,7 +96,7 @@ class CancelacionIT extends PruebaDeIntegracion {
     void laSedeSinElRolRecepcionNoAutoriza() {
         String sinRol = token(CLAVE, claims("miembro-2").claim("sede", "centro").build());
 
-        assertThat(cancelar(sinRol, Map.of("reason", "x")).codigo()).isEqualTo("FORBIDDEN");
+        assertThat(cancelar(sinRol, Map.of("reason", "Mantenimiento de la sala")).codigo()).isEqualTo("FORBIDDEN");
     }
 
     @Test

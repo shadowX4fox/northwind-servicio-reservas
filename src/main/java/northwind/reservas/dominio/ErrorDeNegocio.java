@@ -3,7 +3,7 @@ package northwind.reservas.dominio;
 import northwind.reservas.api.modelo.Problem.CodeEnum;
 import org.springframework.http.HttpStatus;
 
-/** Rechazo con un `code` estable del contrato (INV-10, ADR-001). */
+/** Rechazo con un `code` estable del contrato (INV-11, ADR-001). */
 public class ErrorDeNegocio extends RuntimeException {
 
     private final CodeEnum codigo;

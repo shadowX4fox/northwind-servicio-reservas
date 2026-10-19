@@ -9,7 +9,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 
 /**
- * Franja de una fecha en hora local de la sede. INV-02: múltiplo de 30 minutos, 8 horas o menos y
+ * Franja de una fecha en hora local de la sede. INV-01: múltiplo de 30 minutos, 8 horas o menos y
  * no en el pasado; en otro caso `VALIDATION_FAILED`.
  */
 public record Franja(LocalDate fecha, LocalTime inicio, LocalTime fin) {

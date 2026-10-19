@@ -1,4 +1,4 @@
-// Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.1.0.
+// Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.2.0.
 // El contrato vive en architecture/openapi.yaml (copia byte a byte del build pack); las interfaces
 // y los modelos de la API se generan desde esa copia y nunca se escriben a mano.
 
@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "northwind.reservas"
-version = "1.1.0"
+version = "1.1.1"
 
 java {
     toolchain {

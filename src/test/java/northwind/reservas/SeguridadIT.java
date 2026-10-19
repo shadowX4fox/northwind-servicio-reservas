@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.Date;
 import org.junit.jupiter.api.Test;
 
-/** security § Pruebas que la construcción debe pasar, e INV-09: sin token válido, `UNAUTHENTICATED` (401). */
+/** security § Pruebas que la construcción debe pasar, e INV-10: sin token válido, `UNAUTHENTICATED` (401). */
 class SeguridadIT extends PruebaDeIntegracion {
 
     private static final String RUTA = "/v1/bookings";

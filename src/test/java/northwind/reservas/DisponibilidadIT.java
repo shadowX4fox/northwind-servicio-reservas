@@ -39,7 +39,7 @@ class DisponibilidadIT extends PruebaDeIntegracion {
     }
 
     @Test
-    void sinSalasLibresSugiereLasTresFranjasDe30MinutosMasCercanas() {
+    void sinSalasLibresSugiereLasTresFranjasDeLaMismaDuracionMasCercanas() {
         reservar(token("miembro-1"), "sala-c1", "2026-11-03", "09:00", "12:00");
         reservar(token("miembro-2"), "sala-c2", "2026-11-03", "10:00", "11:30");
 
@@ -48,9 +48,23 @@ class DisponibilidadIT extends PruebaDeIntegracion {
         assertThat(r.cuerpo().path("rooms")).allSatisfy(s -> assertThat(s.path("status").asText()).isEqualTo("occupied"));
         List<String> sugeridas = new ArrayList<>();
         r.cuerpo().path("suggestedSlots").forEach(f -> sugeridas.add(f.path("start").asText() + "-" + f.path("end").asText()));
-        // Distancia al inicio pedido (10:00): 09:30 → 30 min, 09:00 → 60 min; 08:30 y 11:30 → 90 min,
-        // y ante igual distancia gana la más temprana.
-        assertThat(sugeridas).containsExactly("09:30-10:00", "09:00-09:30", "08:30-09:00");
+        // Franjas de 1 hora, como la pedida. Distancia al inicio pedido (10:00): 09:00 → 60 min;
+        // 08:30 y 11:30 → 90 min, y ante igual distancia gana la posterior. 09:30, 10:30 y 11:00 no
+        // tienen sala libre la hora entera.
+        assertThat(sugeridas).containsExactly("09:00-10:00", "11:30-12:30", "08:30-09:30");
+    }
+
+    @Test
+    void lasFranjasSugeridasNuncaEstanEnElPasado() {
+        reservar(token("miembro-1"), "sala-c1", "2026-11-02", "10:00", "11:00");
+        reservar(token("miembro-2"), "sala-c2", "2026-11-02", "10:00", "11:00");
+        reloj.fijar(AHORA.withHour(9).withMinute(30));
+
+        Respuesta r = get("/v1/availability?site=centro&date=2026-11-02&start=10:00&end=11:00", token("miembro-3"));
+
+        // 09:00 estaría a 60 minutos, como 11:00, pero ya pasó.
+        assertThat(r.cuerpo().path("suggestedSlots")).extracting(f -> f.path("start").asText())
+                .containsExactly("11:00", "11:30", "12:00");
     }
 
     @ParameterizedTest

@@ -95,19 +95,23 @@ public class ServicioReservas {
     }
 
     /**
-     * CU1, alternativa 1: "las 3 franjas de 30 minutos más cercanas con una sala libre"
-     * (docs/04 Flujo 1). Las franjas son de la misma fecha, porque `suggestedSlots` no lleva fecha;
-     * ante igual distancia gana la más temprana.
+     * CU1, alternativa 1 — INV-02 y `AvailabilityResponse.suggestedSlots`: hasta 3 franjas de la misma
+     * duración, día y sede, las más próximas en el tiempo a la pedida, antes o después y nunca en el
+     * pasado; ante igual distancia, la posterior. Las franjas empiezan en múltiplos de 30 minutos (INV-01).
+     *
+     * TODO(architecture): runtime-view (Flujo 1, Delta) dice "las 3 franjas de 30 minutos más
+     * cercanas", y el contrato y la spec (INV-02) dicen "misma duración"; se implementa el contrato.
      */
     private List<AvailabilityResponseSuggestedSlotsInner> franjasSugeridas(
             List<SalaFila> salas, List<Ocupacion> ocupacion, Franja pedida, LocalDateTime ahora) {
+        Duration duracion = Duration.between(pedida.inicio(), pedida.fin());
         List<LocalTime> candidatas = new ArrayList<>();
-        // La última franja del día (23:30–00:00) se omite: su fin no es posterior a su inicio (Franja).
-        int franjasDelDia = (int) (Duration.ofDays(1).toMinutes() / Franja.PASO.toMinutes());
-        for (int i = 0; i < franjasDelDia - 1; i++) {
-            LocalTime t = LocalTime.MIDNIGHT.plus(Franja.PASO.multipliedBy(i));
+        // Una franja que terminaría a medianoche o después se omite: su fin no sería posterior a su inicio (Franja).
+        for (LocalTime t = LocalTime.MIDNIGHT;
+                Duration.ofSeconds(t.toSecondOfDay()).plus(duracion).compareTo(Duration.ofDays(1)) < 0;
+                t = t.plus(Franja.PASO)) {
             LocalDateTime comienzo = pedida.fecha().atTime(t);
-            LocalDateTime termino = comienzo.plus(Franja.PASO);
+            LocalDateTime termino = comienzo.plus(duracion);
             if (!comienzo.isBefore(ahora)
                     && salasOcupadas(ocupacion, comienzo, termino).size() < salas.size()) {
                 candidatas.add(t);
@@ -116,11 +120,11 @@ public class ServicioReservas {
         long pedidaEnMinutos = pedida.inicio().toSecondOfDay() / 60;
         return candidatas.stream()
                 .sorted(Comparator.comparingLong((LocalTime t) -> Math.abs(t.toSecondOfDay() / 60 - pedidaEnMinutos))
-                        .thenComparing(Comparator.naturalOrder()))
+                        .thenComparing(Comparator.reverseOrder()))
                 .limit(FRANJAS_SUGERIDAS)
                 .map(t -> new AvailabilityResponseSuggestedSlotsInner()
                         .start(Franja.formato(t))
-                        .end(Franja.formato(t.plus(Franja.PASO))))
+                        .end(Franja.formato(t.plus(duracion))))
                 .toList();
     }
 
@@ -227,8 +231,7 @@ public class ServicioReservas {
         if (!"site".equals(alcance)) {
             throw ErrorDeNegocio.validacion("scope desconocido");
         }
-        // TODO(architecture): `scope=site` sin rol `recepcion` no tiene respuesta en el contrato
-        // (listBookings solo declara 200 y 401). Se niega por defecto con FORBIDDEN (security § Regla).
+        // `scope=site` sin rol `recepcion` de una sede: 403 FORBIDDEN (listBookings, ADR-105).
         if (!solicitante.recepcion() || solicitante.sede().isEmpty()) {
             throw ErrorDeNegocio.noAutorizado();
         }
@@ -259,7 +262,8 @@ public class ServicioReservas {
             if (!reserva.inicio().isAfter(ahora)) {
                 throw ErrorDeNegocio.reservaEnCurso();
             }
-            // INV-07: la cancelación por el rol `recepcion` exige motivo.
+            // INV-07: la cancelación por el rol `recepcion` exige `reason` de 10 a 120 caracteres; la
+            // longitud la valida `CancellationRequest` (minLength 10, maxLength 120) antes de llegar aquí.
             // TODO(architecture): no se documenta si un recepcionista que cancela su propia reserva
             // cancela "por el rol recepcion"; aquí el motivo se exige cuando no es el dueño.
             if (!esDueno && (motivo == null || motivo.isBlank())) {
@@ -279,7 +283,7 @@ public class ServicioReservas {
     // ---- conversión ----------------------------------------------------------------------------
 
     private static Booking aBooking(ReservaFila r) {
-        // TODO(architecture): `Booking.site` no tiene tipo en el contrato (asset:openapi.yaml línea 297);
+        // TODO(architecture): `Booking.site` no tiene tipo en el contrato (asset:openapi.yaml línea 314);
         // se emite el valor de la sede tal como lo nombra el parámetro `site` de CU1.
         Booking booking = new Booking()
                 .code(r.codigo())

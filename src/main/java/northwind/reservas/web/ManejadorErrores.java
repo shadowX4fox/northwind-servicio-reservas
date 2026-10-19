@@ -18,9 +18,8 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
- * Errores RFC 9457 (`application/problem+json`) con el campo `code` estable (INV-10, ADR-001).
- * TODO(architecture): "campos del problem además de `code` (type, title, status, detail)" no están
- * documentados (asset:openapi.yaml línea 203); el cuerpo lleva solo `code`.
+ * Errores RFC 9457 (`application/problem+json`) con el campo `code` estable (INV-11, ADR-001).
+ * El esquema `Problem` declara solo `code`, obligatorio; el cuerpo lleva solo `code`.
  */
 @RestControllerAdvice
 public class ManejadorErrores {
