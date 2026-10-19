@@ -1,0 +1,32 @@
+openapi: "3.1.0"
+
+info:
+  title: "Servicio de Reservas API"
+  # TODO: [NOT DOCUMENTED — versión de la API: agregar a docs/components/reservas-de-salas-northwind/02-servicio-de-reservas.md]
+  version: "NOT-DOCUMENTED"
+  description: |
+    Concentra las reglas de reserva de las 42 salas de las 3 sedes y es la única puerta a sus datos (ADR-003).
+    REST sobre HTTPS con cuerpos JSON (ADR-001). Contrato OpenAPI 3.1 versionado en el repositorio del servicio (ADR-001).
+  contact:
+    name: "Equipo de Arquitectura Northwind"
+
+# TODO: [NOT DOCUMENTED — URL base del servidor: agregar a docs/components/reservas-de-salas-northwind/02-servicio-de-reservas.md]
+# servers: omitido hasta que la URL base esté documentada.
+
+security:
+  - bearerAuth: []
+
+# TODO: [NOT DOCUMENTED — método y ruta de "Consultar disponibilidad" (CU1): agregar a docs/components/reservas-de-salas-northwind/02-servicio-de-reservas.md § Especificación de API]
+# TODO: [NOT DOCUMENTED — método y ruta de "Crear reserva" (CU2), con cabecera Idempotency-Key (ADR-103): agregar a docs/components/reservas-de-salas-northwind/02-servicio-de-reservas.md § Especificación de API]
+# TODO: [NOT DOCUMENTED — método y ruta de "Cancelar reserva" (CU3): agregar a docs/components/reservas-de-salas-northwind/02-servicio-de-reservas.md § Especificación de API]
+paths: {}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Token JWT del Proveedor de Identidad Northwind, enviado en Authorization (ADR-002). Sin token válido, respuesta 401."
+  # TODO: [NOT DOCUMENTED — esquemas de solicitud y respuesta: agregar a docs/components/reservas-de-salas-northwind/02-servicio-de-reservas.md § Especificación de API]
+  schemas: {}
