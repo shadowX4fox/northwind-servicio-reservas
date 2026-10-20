@@ -61,6 +61,22 @@ class CacheDisponibilidadIT extends PruebaDeIntegracion {
     }
 
     @Test
+    void trasReconectarLaEscuchaSigueRecibiendoAvisos() {
+        assertThat(estadoDe("sala-c1")).isEqualTo("free");
+
+        // El vaciado al reconectar deja la entrada en occupied: la escucha ya está de vuelta.
+        cortarEscucha();
+        reservaDeOtraReplica("sala-c1", "2026-11-03 10:00", "2026-11-03 11:00");
+        await().atMost(ESPERA).untilAsserted(() -> assertThat(estadoDe("sala-c1")).isEqualTo("occupied"));
+
+        // Ya no hay otro vaciado: solo el aviso puede borrar la entrada.
+        cancelacionDeOtraReplica();
+        avisoDeOtraReplica("centro 2026-11-03");
+
+        await().atMost(ESPERA).untilAsserted(() -> assertThat(estadoDe("sala-c1")).isEqualTo("free"));
+    }
+
+    @Test
     void unAvisoIlegibleSeIgnoraYLaEscuchaSigue() {
         assertThat(estadoDe("sala-c1")).isEqualTo("free");
         reservaDeOtraReplica("sala-c1", "2026-11-03 10:00", "2026-11-03 11:00");
@@ -137,6 +153,10 @@ class CacheDisponibilidadIT extends PruebaDeIntegracion {
                         VALUES ('RS-OTRARPL1', ?, 'centro', ?::timestamp, ?::timestamp, 'Otra réplica', 'miembro-9', 'confirmed')""")
                 .param(sala).param(inicio).param(fin)
                 .update();
+    }
+
+    private void cancelacionDeOtraReplica() {
+        jdbc.sql("UPDATE reserva SET estado = 'cancelled' WHERE codigo = 'RS-OTRARPL1'").update();
     }
 
     private void avisoDeOtraReplica(String aviso) {
