@@ -1,4 +1,4 @@
-# Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.5.0.
+# Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.5.1.
 # Lo que la arquitectura no documenta no tiene valor por defecto: el despliegue lo da o el servicio no arranca.
 
 spring:

@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Valores que la arquitectura 1.5.0 no documenta y que el despliegue debe dar. Ninguno tiene
+ * Valores que la arquitectura 1.5.1 no documenta y que el despliegue debe dar. Ninguno tiene
  * valor por defecto: sin ellos el Servicio de Reservas no arranca, en lugar de suponerlos.
  *
  * @param zonaHoraria TODO(architecture): la arquitectura no documenta la zona horaria de las sedes;
