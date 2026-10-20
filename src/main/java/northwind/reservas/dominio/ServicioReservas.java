@@ -46,14 +46,20 @@ public class ServicioReservas {
     private static final String ALFANUMERICOS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     private final RepositorioReservas repositorio;
+    private final CacheDisponibilidad cache;
     private final TransactionTemplate transaccion;
     private final ObjectMapper json;
     private final Clock reloj;
     private final SecureRandom aleatorio = new SecureRandom();
 
     public ServicioReservas(
-            RepositorioReservas repositorio, TransactionTemplate transaccion, ObjectMapper json, Clock reloj) {
+            RepositorioReservas repositorio,
+            CacheDisponibilidad cache,
+            TransactionTemplate transaccion,
+            ObjectMapper json,
+            Clock reloj) {
         this.repositorio = repositorio;
+        this.cache = cache;
         this.transaccion = transaccion;
         this.json = json;
         this.reloj = reloj;
@@ -72,8 +78,10 @@ public class ServicioReservas {
         LocalDateTime ahora = LocalDateTime.now(reloj);
         Franja franja = Franja.de(fecha, inicio, fin, ahora);
 
-        List<SalaFila> salas = repositorio.salasDeSede(sede);
-        List<Ocupacion> ocupacion = repositorio.ocupacionDeSede(sede, fecha);
+        // Fase 3 — ADR-108: la caché Caffeine; sin entrada vigente, la Base de Datos de Reservas.
+        CacheDisponibilidad.Entrada entrada = cache.entrada(sede, fecha);
+        List<SalaFila> salas = entrada.salas();
+        List<Ocupacion> ocupacion = entrada.ocupacion();
         Set<String> ocupadas = salasOcupadas(ocupacion, franja.comienzo(), franja.termino());
 
         AvailabilityResponse respuesta = new AvailabilityResponse();
@@ -146,7 +154,7 @@ public class ServicioReservas {
             throw ErrorDeNegocio.validacion("date es obligatorio");
         }
         try {
-            return transaccion.execute(estado -> crearEnTransaccion(solicitante, clave, pedido));
+            return invalidarCache(transaccion.execute(estado -> crearEnTransaccion(solicitante, clave, pedido)));
         } catch (ClaveVigente e) {
             // Otra solicitud con la misma clave confirmó primero: se devuelve su respuesta (ADR-103).
             return respuestaGuardada(solicitante.miembro(), clave)
@@ -244,7 +252,7 @@ public class ServicioReservas {
     // ---- CU3: cancelar reserva (fase 5) --------------------------------------------------------
 
     public Booking cancelar(Solicitante solicitante, String codigo, String motivo) {
-        return transaccion.execute(estado -> {
+        return invalidarCache(transaccion.execute(estado -> {
             ReservaFila reserva = repositorio.reservaParaActualizar(codigo)
                     .orElseThrow(ErrorDeNegocio::reservaNoEncontrada);
 
@@ -278,7 +286,14 @@ public class ServicioReservas {
             return aBooking(new ReservaFila(
                     reserva.codigo(), reserva.salaId(), reserva.sede(), reserva.inicio(), reserva.fin(),
                     reserva.asunto(), reserva.miembro(), "cancelled", solicitante.miembro(), instante, motivo));
-        });
+        }));
+    }
+
+    /** ADR-108: tras confirmar la transacción, esta réplica invalida su entrada de la sede y fecha. */
+    private Booking invalidarCache(Booking reserva) {
+        // `Booking.site` no tiene tipo en el contrato (Object); lleva el valor de la sede.
+        cache.invalidar(Sede.de(String.valueOf(reserva.getSite())).orElseThrow(), reserva.getDate());
+        return reserva;
     }
 
     // ---- conversión ----------------------------------------------------------------------------

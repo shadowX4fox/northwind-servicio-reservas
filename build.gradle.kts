@@ -1,4 +1,4 @@
-// Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.3.2.
+// Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.4.0.
 // El contrato vive en architecture/openapi.yaml (copia byte a byte del build pack); las interfaces
 // y los modelos de la API se generan desde esa copia y nunca se escriben a mano.
 
@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "northwind.reservas"
-version = "1.1.1"
+version = "1.2.0"
 
 java {
     toolchain {
@@ -24,6 +24,8 @@ repositories {
 
 // Testcontainers 1.19 (el de Spring Boot 3.3) usa la API 1.32 de Docker, que Docker 29 ya no acepta.
 extra["testcontainers.version"] = "1.21.4"
+// ADR-108: Caffeine 3.2 (Spring Boot 3.3 gestiona la 3.1).
+extra["caffeine.version"] = "3.2.4"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -32,6 +34,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("com.github.ben-manes.caffeine:caffeine")
 
     // ADR-003: PostgreSQL 16, esquema versionado con Flyway.
     implementation("org.flywaydb:flyway-core")

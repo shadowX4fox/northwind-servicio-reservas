@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import northwind.reservas.dominio.CacheDisponibilidad;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -80,6 +81,7 @@ public abstract class PruebaDeIntegracion {
         registro.add("reservas.token.clientes-permitidos", () -> PORTAL);
         // Las pruebas llaman a la purga directamente; la programada no corre durante ellas.
         registro.add("reservas.intervalo-purga-claves", () -> "P1D");
+        registro.add("reservas.tamano-maximo-cache-disponibilidad", () -> "100");
     }
 
     @LocalServerPort
@@ -91,6 +93,9 @@ public abstract class PruebaDeIntegracion {
     @Autowired
     RelojMovil reloj;
 
+    @Autowired
+    CacheDisponibilidad cache;
+
     final ObjectMapper json = new ObjectMapper();
     final HttpClient http = HttpClient.newHttpClient();
 
@@ -99,6 +104,7 @@ public abstract class PruebaDeIntegracion {
         JWKS_DISPONIBLE.set(true);
         reloj.fijar(AHORA);
         jdbc.sql("TRUNCATE auditoria_cancelacion, clave_idempotencia, reserva, sala").update();
+        cache.vaciar();
         sala("sala-c1", "centro", "Atlántico", 4, "screen");
         sala("sala-c2", "centro", "Pacífico", 8, "screen", "videoconference");
         sala("sala-n1", "norte", "Andes", 6, "whiteboard");

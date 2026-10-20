@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import org.hibernate.validator.constraints.time.DurationMin;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -12,7 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Valores que la arquitectura 1.3.2 no documenta y que el despliegue debe dar. Ninguno tiene
+ * Valores que la arquitectura 1.4.0 no documenta y que el despliegue debe dar. Ninguno tiene
  * valor por defecto: sin ellos el Servicio de Reservas no arranca, en lugar de suponerlos.
  *
  * @param zonaHoraria TODO(architecture): la arquitectura no documenta la zona horaria de las sedes;
@@ -21,13 +22,16 @@ import org.springframework.validation.annotation.Validated;
  * @param token claims del JWT del Proveedor de Identidad Northwind
  * @param intervaloPurgaClaves TODO(architecture): TDR-002 (opción B) pide que el Servicio de Reservas
  *     borre las claves de idempotencia vencidas "de forma periódica", pero no documenta cada cuánto.
+ * @param tamanoMaximoCacheDisponibilidad TODO(architecture): ADR-108 dice "Tamaño máximo de la caché:
+ *     Not documented"; número máximo de entradas (sede y fecha) de la caché de disponibilidad.
  */
 @Validated
 @ConfigurationProperties("reservas")
 public record PropiedadesReservas(
         @NotNull ZoneId zonaHoraria,
         @NotNull @Valid Token token,
-        @NotNull @DurationMin(seconds = 1) Duration intervaloPurgaClaves) {
+        @NotNull @DurationMin(seconds = 1) Duration intervaloPurgaClaves,
+        @NotNull @Positive Long tamanoMaximoCacheDisponibilidad) {
 
     /**
      * @param jwkSetUri endpoint JWKS del Proveedor de Identidad Northwind (I-03, ADR-002)
