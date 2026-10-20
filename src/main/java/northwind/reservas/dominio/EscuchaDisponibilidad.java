@@ -84,6 +84,8 @@ public class EscuchaDisponibilidad implements SmartLifecycle {
                     return;
                 }
                 log.warn("escucha de disponibilidad perdida; se reconecta: {}", e.getMessage());
+                // Atajo: los avisos perdidos hasta reconectar no vacían la caché; los cubre la
+                // expiración de 5 minutos (ADR-109). https://github.com/shadowX4fox/northwind-reservas/issues/52
                 cerrar();
                 esperarReconexion();
             }
