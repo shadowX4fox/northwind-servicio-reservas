@@ -82,6 +82,7 @@ public abstract class PruebaDeIntegracion {
         // Las pruebas llaman a la purga directamente; la programada no corre durante ellas.
         registro.add("reservas.intervalo-purga-claves", () -> "P1D");
         registro.add("reservas.tamano-maximo-cache-disponibilidad", () -> "100");
+        registro.add("reservas.espera-reconexion-escucha", () -> "1s");
     }
 
     @LocalServerPort

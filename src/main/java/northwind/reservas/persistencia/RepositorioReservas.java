@@ -137,6 +137,15 @@ public class RepositorioReservas {
                 .single();
     }
 
+    /** ADR-109: avisa a todas las réplicas; PostgreSQL lo entrega solo si la transacción confirma. */
+    public void avisarDisponibilidad(String canal, String aviso) {
+        jdbc.sql("SELECT pg_notify(?, ?)")
+                .param(canal)
+                .param(aviso)
+                .query((rs, n) -> null)
+                .list();
+    }
+
     public boolean existeCodigo(String codigo) {
         return jdbc.sql("SELECT EXISTS (SELECT 1 FROM reserva WHERE codigo = ?)")
                 .param(codigo)

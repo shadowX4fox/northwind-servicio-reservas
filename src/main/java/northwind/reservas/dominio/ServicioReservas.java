@@ -78,7 +78,7 @@ public class ServicioReservas {
         LocalDateTime ahora = LocalDateTime.now(reloj);
         Franja franja = Franja.de(fecha, inicio, fin, ahora);
 
-        // Fase 3 — ADR-108: la caché Caffeine; sin entrada vigente, la Base de Datos de Reservas.
+        // Fase 3 — ADR-109: la caché Caffeine; sin entrada vigente, la Base de Datos de Reservas.
         CacheDisponibilidad.Entrada entrada = cache.entrada(sede, fecha);
         List<SalaFila> salas = entrada.salas();
         List<Ocupacion> ocupacion = entrada.ocupacion();
@@ -196,6 +196,7 @@ public class ServicioReservas {
             }
             throw e;
         }
+        avisarDisponibilidad(Sede.de(reserva.sede()).orElseThrow(), franja.fecha());
 
         Booking creada = aBooking(reserva);
         OffsetDateTime instante = OffsetDateTime.now(reloj);
@@ -282,6 +283,7 @@ public class ServicioReservas {
             // Fase 5, paso 5 — INV-08: cancelación y auditoría en la misma transacción (ADR-106).
             OffsetDateTime instante = OffsetDateTime.now(reloj);
             repositorio.cancelar(codigo, solicitante.miembro(), instante, motivo);
+            avisarDisponibilidad(sedeDeLaSala, reserva.inicio().toLocalDate());
             log.info("reserva cancelada: codigo={} sede={} recepcion={}", codigo, reserva.sede(), !esDueno);
             return aBooking(new ReservaFila(
                     reserva.codigo(), reserva.salaId(), reserva.sede(), reserva.inicio(), reserva.fin(),
@@ -289,7 +291,15 @@ public class ServicioReservas {
         }));
     }
 
-    /** ADR-108: tras confirmar la transacción, esta réplica invalida su entrada de la sede y fecha. */
+    /** ADR-109: en la transacción, el aviso a todas las réplicas para que borren su entrada. */
+    private void avisarDisponibilidad(Sede sede, LocalDate fecha) {
+        repositorio.avisarDisponibilidad(EscuchaDisponibilidad.CANAL, CacheDisponibilidad.aviso(sede, fecha));
+    }
+
+    /**
+     * Tras confirmar la transacción, esta réplica borra su entrada sin esperar a su propio aviso
+     * (ADR-109); las demás la borran al recibirlo.
+     */
     private Booking invalidarCache(Booking reserva) {
         // `Booking.site` no tiene tipo en el contrato (Object); lleva el valor de la sede.
         cache.invalidar(Sede.de(String.valueOf(reserva.getSite())).orElseThrow(), reserva.getDate());

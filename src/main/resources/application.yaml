@@ -1,4 +1,4 @@
-# Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.4.0.
+# Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.5.0.
 # Lo que la arquitectura no documenta no tiene valor por defecto: el despliegue lo da o el servicio no arranca.
 
 spring:
@@ -53,5 +53,7 @@ reservas:
     clientes-permitidos: ${RESERVAS_CLIENTES_PERMITIDOS}
   # TDR-002, opción B. TODO(architecture): cada cuánto se purgan las claves de idempotencia vencidas no está documentado.
   intervalo-purga-claves: ${RESERVAS_INTERVALO_PURGA_CLAVES}
-  # ADR-108. TODO(architecture): "Tamaño máximo de la caché: Not documented".
+  # ADR-109. TODO(architecture): "Tamaño máximo de la caché: Not documented".
   tamano-maximo-cache-disponibilidad: ${RESERVAS_TAMANO_MAXIMO_CACHE_DISPONIBILIDAD}
+  # ADR-109. TODO(architecture): la reconexión de la conexión LISTEN no está documentada.
+  espera-reconexion-escucha: ${RESERVAS_ESPERA_RECONEXION_ESCUCHA}
