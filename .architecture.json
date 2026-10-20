@@ -3,5 +3,6 @@
   "project": "northwind-reservas",
   "component": "servicio-de-reservas",
   "architecture_version": "1.6.0",
-  "pack_revision": "986f78fe61b460fa855db6d615ab4f969af47f35714257c535dab26d377569a3"
+  "pack_revision": "986f78fe61b460fa855db6d615ab4f969af47f35714257c535dab26d377569a3",
+  "supervision": "unattended"
 }
