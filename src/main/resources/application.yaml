@@ -43,6 +43,7 @@ management:
 
 reservas:
   # TODO(architecture): zona horaria de las sedes no documentada (spec § 4, INV-01 e INV-04).
+  # Escalado: https://github.com/shadowX4fox/northwind-reservas/issues/62
   zona-horaria: ${RESERVAS_ZONA_HORARIA}
   token:
     jwk-set-uri: ${RESERVAS_JWKS_URI}
