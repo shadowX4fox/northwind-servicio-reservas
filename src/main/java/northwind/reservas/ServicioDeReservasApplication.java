@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * Servicio de Reservas — API REST de disponibilidad, reserva y cancelación de las salas de
- * Reservas de Salas Northwind (arquitectura 1.6.0).
+ * Reservas de Salas Northwind (arquitectura 1.7.0).
  */
 @SpringBootApplication
 @ConfigurationPropertiesScan

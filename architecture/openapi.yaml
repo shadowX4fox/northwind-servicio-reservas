@@ -44,12 +44,12 @@ paths:
             format: date
         - name: start
           in: query
-          description: "Inicio de la franja, `HH:mm` en múltiplos de 30 minutos; duración de 8 horas o menos."
+          description: "Inicio de la franja, `HH:mm` en hora local de la sede, sin desfase (ADR-110), en múltiplos de 30 minutos; duración de 8 horas o menos."
           schema:
             type: string
         - name: end
           in: query
-          description: "Fin de la franja, `HH:mm` en múltiplos de 30 minutos; duración de 8 horas o menos."
+          description: "Fin de la franja, `HH:mm` en hora local de la sede, sin desfase (ADR-110), en múltiplos de 30 minutos; duración de 8 horas o menos."
           schema:
             type: string
       responses:
@@ -239,10 +239,10 @@ components:
             properties:
               start:
                 type: string
-                description: "`HH:mm`."
+                description: "`HH:mm` en hora local de la sede, sin desfase (ADR-110)."
               end:
                 type: string
-                description: "`HH:mm`."
+                description: "`HH:mm` en hora local de la sede, sin desfase (ADR-110)."
 
     RoomAvailability:
       type: object
@@ -282,10 +282,10 @@ components:
           description: "Fecha ISO 8601."
         start:
           type: string
-          description: "`HH:mm`."
+          description: "`HH:mm` en hora local de la sede, sin desfase (ADR-110)."
         end:
           type: string
-          description: "`HH:mm`."
+          description: "`HH:mm` en hora local de la sede, sin desfase (ADR-110)."
         subject:
           type: string
           maxLength: 80
@@ -319,10 +319,10 @@ components:
           description: "Fecha ISO 8601."
         start:
           type: string
-          description: "`HH:mm`."
+          description: "`HH:mm` en hora local de la sede, sin desfase (ADR-110)."
         end:
           type: string
-          description: "`HH:mm`."
+          description: "`HH:mm` en hora local de la sede, sin desfase (ADR-110)."
         subject:
           type: string
           maxLength: 80
