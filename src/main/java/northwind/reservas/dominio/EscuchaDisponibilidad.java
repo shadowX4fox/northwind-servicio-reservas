@@ -18,8 +18,7 @@ import org.springframework.stereotype.Component;
  * ADR-109: cada réplica del Servicio de Reservas mantiene una conexión {@code LISTEN} al canal
  * {@code disponibilidad} de la Base de Datos de Reservas, fuera del pool, y borra su entrada de la
  * caché al recibir un aviso. Si la conexión se pierde, los avisos de ese intervalo se pierden; al
- * reconectar, la réplica vacía su caché (opción A de la deuda registrada en
- * https://github.com/shadowX4fox/northwind-reservas/issues/52), y la expiración de 5 minutos sigue
+ * reconectar, la réplica vacía su caché (TDR-003, opción A), y la expiración de 5 minutos sigue
  * como red de seguridad (ADR-109).
  */
 @Component
@@ -74,7 +73,7 @@ public class EscuchaDisponibilidad implements SmartLifecycle {
                 }
                 if (reconexion) {
                     // Los avisos del intervalo sin conexión se perdieron. Se vacía después del LISTEN,
-                    // para que ningún aviso caiga entre el vaciado y la escucha (issue #52, opción A).
+                    // para que ningún aviso caiga entre el vaciado y la escucha (TDR-003, opción A).
                     cache.vaciar();
                     log.info("escucha de disponibilidad reconectada; caché vaciada");
                 } else {

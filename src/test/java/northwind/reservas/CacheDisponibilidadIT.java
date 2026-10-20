@@ -56,7 +56,7 @@ class CacheDisponibilidadIT extends PruebaDeIntegracion {
         cortarEscucha();
         reservaDeOtraReplica("sala-c1", "2026-11-03 10:00", "2026-11-03 11:00");
 
-        // Sin mover el reloj: no es la expiración de 5 minutos, es el vaciado al reconectar (issue #52).
+        // Sin mover el reloj: no es la expiración de 5 minutos, es el vaciado al reconectar (TDR-003).
         await().atMost(ESPERA).untilAsserted(() -> assertThat(estadoDe("sala-c1")).isEqualTo("occupied"));
     }
 
