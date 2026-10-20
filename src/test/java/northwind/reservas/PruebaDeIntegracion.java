@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import northwind.reservas.dominio.CacheDisponibilidad;
+import northwind.reservas.dominio.Sede;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,7 +53,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @Import(PruebaDeIntegracion.RelojDePrueba.class)
 public abstract class PruebaDeIntegracion {
 
-    static final ZoneId ZONA = ZoneId.of("America/Bogota");
+    static final ZoneId ZONA = Sede.ZONA_HORARIA;
     /** Lunes 2 de noviembre de 2026, 08:00 en la zona de las sedes de prueba. */
     static final LocalDateTime AHORA = LocalDateTime.of(2026, 11, 2, 8, 0);
     static final String PORTAL = "portal-de-reservas";
@@ -73,7 +74,6 @@ public abstract class PruebaDeIntegracion {
     static void propiedades(DynamicPropertyRegistry registro) {
         registro.add("spring.datasource.hikari.data-source-properties.sslmode", () -> "disable");
         registro.add("management.otlp.metrics.export.enabled", () -> "false");
-        registro.add("reservas.zona-horaria", ZONA::getId);
         registro.add("reservas.token.jwk-set-uri", () -> "http://localhost:" + JWKS.getAddress().getPort() + "/jwks");
         registro.add("reservas.token.claim-roles", () -> "realm_access.roles");
         registro.add("reservas.token.claim-sede", () -> "sede");

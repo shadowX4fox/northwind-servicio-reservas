@@ -1,4 +1,4 @@
-# Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.6.0.
+# Servicio de Reservas — arquitectura Reservas de Salas Northwind 1.7.0.
 # Lo que la arquitectura no documenta no tiene valor por defecto: el despliegue lo da o el servicio no arranca.
 
 spring:
@@ -42,11 +42,6 @@ management:
   # TODO(architecture): probabilidad de muestreo de trazas no documentada; se usa la de Spring Boot.
 
 reservas:
-  # TODO(architecture): zona horaria de las sedes no documentada (spec § 4, INV-01 e INV-04).
-  # Escalado: https://github.com/shadowX4fox/northwind-reservas/issues/62
-  # Solución temporal hasta su respuesta: la da el despliegue (identificador IANA, una sola zona para
-  # las 3 sedes), sin valor por defecto. TDR solicitado (Tier 0): https://github.com/shadowX4fox/northwind-reservas/issues/65
-  zona-horaria: ${RESERVAS_ZONA_HORARIA}
   token:
     jwk-set-uri: ${RESERVAS_JWKS_URI}
     # TODO(architecture): claims del rol `recepcion`, del atributo `sede` y del llamador no documentados (ADR-105; security § Entrada).
