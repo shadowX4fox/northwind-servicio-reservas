@@ -49,6 +49,18 @@ class CacheDisponibilidadIT extends PruebaDeIntegracion {
     }
 
     @Test
+    void alReconectarLaEscuchaVaciaLaCache() {
+        assertThat(estadoDe("sala-c1")).isEqualTo("free");
+
+        // Se corta la conexión LISTEN; la reserva de otra réplica y su aviso se pierden mientras tanto.
+        cortarEscucha();
+        reservaDeOtraReplica("sala-c1", "2026-11-03 10:00", "2026-11-03 11:00");
+
+        // Sin mover el reloj: no es la expiración de 5 minutos, es el vaciado al reconectar (issue #52).
+        await().atMost(ESPERA).untilAsserted(() -> assertThat(estadoDe("sala-c1")).isEqualTo("occupied"));
+    }
+
+    @Test
     void unAvisoIlegibleSeIgnoraYLaEscuchaSigue() {
         assertThat(estadoDe("sala-c1")).isEqualTo("free");
         reservaDeOtraReplica("sala-c1", "2026-11-03 10:00", "2026-11-03 11:00");
@@ -129,6 +141,15 @@ class CacheDisponibilidadIT extends PruebaDeIntegracion {
 
     private void avisoDeOtraReplica(String aviso) {
         jdbc.sql("SELECT pg_notify('disponibilidad', ?)").param(aviso).query((rs, n) -> null).list();
+    }
+
+    /** Termina en la Base de Datos de Reservas la conexión LISTEN del Servicio de Reservas. */
+    private void cortarEscucha() {
+        await().atMost(ESPERA).until(() -> jdbc.sql("""
+                        SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity
+                        WHERE query = 'LISTEN disponibilidad' AND pid <> pg_backend_pid()""")
+                .query(Integer.class)
+                .single() > 0);
     }
 
     private static Connection escuchar() throws SQLException {
