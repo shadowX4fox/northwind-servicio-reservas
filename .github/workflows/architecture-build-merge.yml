@@ -1,0 +1,44 @@
+# Architecture build merge — GitHub Actions. Copy to .github/workflows/architecture-build-merge.yml in a service repository
+# that lets the architecture build's pull requests merge without a person, once its own checks pass. Opt in: this is the
+# service team's policy, never the architecture's.
+#
+# It runs when the workflow named below completes on a pull request; it merges only a pull request the build agent opened
+# (variable SA_BUILD_AGENT, the login of SA_BUILD_TOKEN's identity), only at the commit those checks passed, and never a
+# draft. The merge lets a Tier 0 request the build filed with it — a TDR moved to Resolved — be written in the architecture
+# repository, which waits for it (architecture-tier0.yml).
+#
+# Repository settings: variable SA_BUILD_AGENT; variable SA_BUILD_MERGE_METHOD, optional — merge (default), squash or rebase.
+# Settings: the default branch accepts a merge by GITHUB_TOKEN (a required review would hold it for a person).
+name: Architecture build merge
+
+on:
+  workflow_run:
+    workflows: ["Tests"]           # the name of this repository's test workflow — the checks the build's pull request passes
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  merge:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && vars.SA_BUILD_AGENT != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+      AGENT: ${{ vars.SA_BUILD_AGENT }}
+      METHOD: ${{ vars.SA_BUILD_MERGE_METHOD || 'merge' }}
+    steps:
+      - name: Merge the build's pull request
+        run: |
+          pr=$(gh pr list -R "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number,author,headRefOid,isDraft \
+            --jq "[.[] | select(.headRefOid == \"$SHA\")][0] // empty")
+          [ -n "$pr" ] || { echo "no open pull request at $SHA on $BRANCH"; exit 0; }
+          n=$(jq -r .number <<<"$pr"); author=$(jq -r .author.login <<<"$pr")
+          [ "$(jq -r .isDraft <<<"$pr")" = false ] || { echo "#$n is a draft"; exit 0; }
+          [ "${author,,}" = "${AGENT,,}" ] || { echo "#$n was opened by $author, not the build agent $AGENT: a person merges it"; exit 0; }
+          gh pr merge "$n" -R "$GITHUB_REPOSITORY" "--$METHOD" --match-head-commit "$SHA"
+          echo "merged #$n at $SHA ($METHOD)"
