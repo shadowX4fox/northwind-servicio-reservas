@@ -85,8 +85,8 @@ public class RepositorioReservas {
     }
 
     /**
-     * La respuesta guardada de una clave vigente (ADR-103). Las claves vencidas se ignoran pero no se
-     * purgan: TDR-002 (Open).
+     * La respuesta guardada de una clave vigente (ADR-103). Las claves vencidas se ignoran hasta que
+     * {@link #purgarClavesVencidas} las borra (TDR-002, opción B).
      */
     public Optional<String> respuestaGuardada(String miembro, UUID clave, OffsetDateTime vigenteDesde) {
         return jdbc.sql("""
@@ -115,6 +115,13 @@ public class RepositorioReservas {
                         .param(vigenteDesde)
                         .update()
                 == 1;
+    }
+
+    /** Borra las claves vencidas: las creadas en {@code vigenteDesde} o antes. Devuelve cuántas. */
+    public int purgarClavesVencidas(OffsetDateTime vigenteDesde) {
+        return jdbc.sql("DELETE FROM clave_idempotencia WHERE creada_en <= ?")
+                .param(vigenteDesde)
+                .update();
     }
 
     public int reservasFuturasDelDia(String miembro, LocalDate fecha, LocalDateTime ahora) {

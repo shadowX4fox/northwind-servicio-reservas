@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.validator.constraints.time.DurationMin;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -17,10 +19,15 @@ import org.springframework.validation.annotation.Validated;
  *     sin ella no se decide si una franja "está en el pasado" (INV-01), si una reserva es "futura"
  *     (INV-04) ni si "ya inició" (ADR-105). Parte: spec § 4.
  * @param token claims del JWT del Proveedor de Identidad Northwind
+ * @param intervaloPurgaClaves TODO(architecture): TDR-002 (opción B) pide que el Servicio de Reservas
+ *     borre las claves de idempotencia vencidas "de forma periódica", pero no documenta cada cuánto.
  */
 @Validated
 @ConfigurationProperties("reservas")
-public record PropiedadesReservas(@NotNull ZoneId zonaHoraria, @NotNull @Valid Token token) {
+public record PropiedadesReservas(
+        @NotNull ZoneId zonaHoraria,
+        @NotNull @Valid Token token,
+        @NotNull @DurationMin(seconds = 1) Duration intervaloPurgaClaves) {
 
     /**
      * @param jwkSetUri endpoint JWKS del Proveedor de Identidad Northwind (I-03, ADR-002)

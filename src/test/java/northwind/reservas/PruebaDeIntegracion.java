@@ -78,6 +78,8 @@ public abstract class PruebaDeIntegracion {
         registro.add("reservas.token.claim-sede", () -> "sede");
         registro.add("reservas.token.claim-cliente", () -> "azp");
         registro.add("reservas.token.clientes-permitidos", () -> PORTAL);
+        // Las pruebas llaman a la purga directamente; la programada no corre durante ellas.
+        registro.add("reservas.intervalo-purga-claves", () -> "P1D");
     }
 
     @LocalServerPort

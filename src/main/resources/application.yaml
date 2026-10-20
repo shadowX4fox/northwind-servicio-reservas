@@ -51,3 +51,5 @@ reservas:
     claim-sede: ${RESERVAS_CLAIM_SEDE}
     claim-cliente: ${RESERVAS_CLAIM_CLIENTE}
     clientes-permitidos: ${RESERVAS_CLIENTES_PERMITIDOS}
+  # TDR-002, opción B. TODO(architecture): cada cuánto se purgan las claves de idempotencia vencidas no está documentado.
+  intervalo-purga-claves: ${RESERVAS_INTERVALO_PURGA_CLAVES}

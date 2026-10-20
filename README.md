@@ -20,6 +20,7 @@ Lo que la arquitectura no documenta no tiene valor por defecto: si falta, el ser
 | `RESERVAS_CLAIM_ROLES` | Ruta del claim con el rol `recepcion` (no documentada) |
 | `RESERVAS_CLAIM_SEDE` | Claim del atributo `sede` (no documentado) |
 | `RESERVAS_CLAIM_CLIENTE`, `RESERVAS_CLIENTES_PERMITIDOS` | Cómo se reconoce al Portal de Reservas, el único llamador (no documentado) |
+| `RESERVAS_INTERVALO_PURGA_CLAVES` | Cada cuánto se purgan las claves de idempotencia vencidas, como duración (`1h`, `PT15M`); TDR-002 opción B (no documentado) |
 | `MANAGEMENT_OTLP_TRACING_ENDPOINT`, `MANAGEMENT_OTLP_METRICS_EXPORT_URL` | Colector OpenTelemetry de Plataforma Northwind (ADR-004) |
 
 Puertos: `8080` para la API y `8081` para las sondas (`/actuator/health/liveness` y `/actuator/health/readiness`).

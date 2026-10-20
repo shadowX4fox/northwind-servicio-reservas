@@ -40,7 +40,8 @@ public class ServicioReservas {
 
     private static final int LIMITE_DIARIO = 3;
     private static final int FRANJAS_SUGERIDAS = 3;
-    private static final Duration VIGENCIA_CLAVE = Duration.ofHours(24);
+    /** ADR-103: una clave de idempotencia y su respuesta se conservan 24 horas. */
+    static final Duration VIGENCIA_CLAVE = Duration.ofHours(24);
     private static final String VIOLACION_DE_EXCLUSION = "23P01";
     private static final String ALFANUMERICOS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
