@@ -84,6 +84,10 @@ public class RepositorioReservas {
                 .list();
     }
 
+    /**
+     * La respuesta guardada de una clave vigente (ADR-103). Las claves vencidas se ignoran pero no se
+     * purgan: TDR-002 (Open).
+     */
     public Optional<String> respuestaGuardada(String miembro, UUID clave, OffsetDateTime vigenteDesde) {
         return jdbc.sql("""
                         SELECT respuesta::text FROM clave_idempotencia
