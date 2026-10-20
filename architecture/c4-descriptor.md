@@ -7,7 +7,7 @@
 | Componente | 5.2 Servicio de Reservas |
 | Tipo | API Service · C4 L2 |
 | Tecnología | Java 21, Spring Boot 3.3 |
-| Versiones | arquitectura v1.2.0 · componente v1.1.1 |
+| Versiones | arquitectura v1.3.0 · componente v1.1.1 |
 | Responsable | [NO DOCUMENTADO — agregar `**Owner:**` a docs/components/reservas-de-salas-northwind/02-servicio-de-reservas.md] |
 | Se ejecuta en | Docker container |
 | Capacidad | 2 réplicas |
