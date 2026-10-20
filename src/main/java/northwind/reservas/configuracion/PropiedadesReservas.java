@@ -18,7 +18,12 @@ import org.springframework.validation.annotation.Validated;
  *
  * @param zonaHoraria TODO(architecture): la arquitectura no documenta la zona horaria de las sedes;
  *     sin ella no se decide si una franja "está en el pasado" (INV-01), si una reserva es "futura"
- *     (INV-04) ni si "ya inició" (ADR-105). Parte: spec § 4.
+ *     (INV-04) ni si "ya inició" (ADR-105). Parte: spec § 4. Escalado al arquitecto:
+ *     https://github.com/shadowX4fox/northwind-reservas/issues/62 — hasta su respuesta el despliegue
+ *     la da en {@code RESERVAS_ZONA_HORARIA} (identificador IANA, una sola zona para las 3 sedes),
+ *     sin valor por defecto: sin ella, o con un identificador inválido, el servicio no arranca.
+ *     Solución temporal, solicitada como TDR (Tier 0):
+ *     https://github.com/shadowX4fox/northwind-reservas/issues/65
  * @param token claims del JWT del Proveedor de Identidad Northwind
  * @param intervaloPurgaClaves TODO(architecture): TDR-002 (opción B) pide que el Servicio de Reservas
  *     borre las claves de idempotencia vencidas "de forma periódica", pero no documenta cada cuánto.

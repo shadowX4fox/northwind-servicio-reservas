@@ -16,7 +16,7 @@ Lo que la arquitectura no documenta no tiene valor por defecto: si falta, el ser
 | `RESERVAS_DB_URL`, `RESERVAS_DB_USUARIO`, `RESERVAS_DB_CLAVE` | Base de Datos de Reservas (I-04), desde el gestor de secretos del clúster (ADR-005) |
 | `RESERVAS_DB_SSLMODE` | TLS de JDBC; por defecto `verify-full` |
 | `RESERVAS_JWKS_URI` | Endpoint JWKS del Proveedor de Identidad Northwind (I-03) |
-| `RESERVAS_ZONA_HORARIA` | Zona horaria de las sedes (no documentada) |
+| `RESERVAS_ZONA_HORARIA` | Zona horaria de las sedes, identificador IANA (`America/Bogota`), una sola para las 3 sedes. Solución temporal hasta la respuesta a [ESC #62](https://github.com/shadowX4fox/northwind-reservas/issues/62); TDR solicitado en [#65](https://github.com/shadowX4fox/northwind-reservas/issues/65) (no documentada) |
 | `RESERVAS_CLAIM_ROLES` | Ruta del claim con el rol `recepcion` (no documentada) |
 | `RESERVAS_CLAIM_SEDE` | Claim del atributo `sede` (no documentado) |
 | `RESERVAS_CLAIM_CLIENTE`, `RESERVAS_CLIENTES_PERMITIDOS` | Cómo se reconoce al Portal de Reservas, el único llamador (no documentado) |
