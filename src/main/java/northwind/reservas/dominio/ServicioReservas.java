@@ -250,6 +250,15 @@ public class ServicioReservas {
                 .toList();
     }
 
+    // ---- CU3, paso 1: consultar reserva --------------------------------------------------------
+
+    /** `getBooking`: la propia, o una de la `sede` del token con rol `recepcion` (ADR-105). */
+    public Booking consultar(Solicitante solicitante, String codigo) {
+        ReservaFila reserva = repositorio.reserva(codigo).orElseThrow(ErrorDeNegocio::reservaNoEncontrada);
+        autorizar(solicitante, reserva);
+        return aBooking(reserva);
+    }
+
     // ---- CU3: cancelar reserva (fase 5) --------------------------------------------------------
 
     public Booking cancelar(Solicitante solicitante, String codigo, String motivo) {
@@ -258,11 +267,8 @@ public class ServicioReservas {
                     .orElseThrow(ErrorDeNegocio::reservaNoEncontrada);
 
             // Fase 5, paso 3 — ADR-105, INV-06: el dueño, o recepción de la sede de la sala.
-            boolean esDueno = reserva.miembro().equals(solicitante.miembro());
+            boolean esDueno = autorizar(solicitante, reserva);
             Sede sedeDeLaSala = Sede.de(reserva.sede()).orElseThrow();
-            if (!esDueno && !solicitante.esRecepcionDe(sedeDeLaSala)) {
-                throw ErrorDeNegocio.noAutorizado();
-            }
             // TODO(architecture): cancelar una reserva ya cancelada no está documentado; se devuelve
             // tal como está, sin una segunda auditoría.
             if ("cancelled".equals(reserva.estado())) {
@@ -289,6 +295,18 @@ public class ServicioReservas {
                     reserva.codigo(), reserva.salaId(), reserva.sede(), reserva.inicio(), reserva.fin(),
                     reserva.asunto(), reserva.miembro(), "cancelled", solicitante.miembro(), instante, motivo));
         }));
+    }
+
+    /**
+     * ADR-105: el dueño de la reserva, o un token con rol `recepcion` de la sede de la sala; en otro
+     * caso FORBIDDEN. Devuelve si el solicitante es el dueño.
+     */
+    private static boolean autorizar(Solicitante solicitante, ReservaFila reserva) {
+        boolean esDueno = reserva.miembro().equals(solicitante.miembro());
+        if (!esDueno && !solicitante.esRecepcionDe(Sede.de(reserva.sede()).orElseThrow())) {
+            throw ErrorDeNegocio.noAutorizado();
+        }
+        return esDueno;
     }
 
     /** ADR-109: en la transacción, el aviso a todas las réplicas para que borren su entrada. */

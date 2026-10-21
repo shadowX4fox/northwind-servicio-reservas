@@ -44,6 +44,11 @@ public class ControladorReservas implements V1Api {
         return ResponseEntity.ok(servicio.listar(solicitante.actual(), scope));
     }
 
+    @Override
+    public ResponseEntity<Booking> getBooking(String code) {
+        return ResponseEntity.ok(servicio.consultar(solicitante.actual(), code));
+    }
+
     /** El cuerpo es opcional para el dueño: Spring no hereda `required = false` de la interfaz generada. */
     @Override
     public ResponseEntity<Booking> cancelBooking(
