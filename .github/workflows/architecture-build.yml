@@ -54,6 +54,7 @@ jobs:
           [ -n "$url" ] || { echo "::error::no MCP server: set SA_INDEX_MCP_URL or \"server\" in .architecture.json"; exit 1; }
           [ "$(jq -r '.supervision // empty' .architecture.json)" = unattended ] || echo "::warning::.architecture.json does not declare \"supervision\": \"unattended\" — BUILD.md will ask questions nobody answers"
           jq -n --arg url "$url" '{mcpServers: {architecture: {type: "http", url: $url}}}' > "$RUNNER_TEMP/mcp.json"
+          mkdir -p "$RUNNER_TEMP/claude-home/.claude"   # Claude's own home (the next step)
           # a machine user's token reads /user; a GitHub App's does not, and the action then commits as the App
           if me=$(gh api user --jq '.login' 2>/dev/null); then
             git config user.name "$me"; git config user.email "$(gh api user --jq '.id')+$me@users.noreply.github.com"
@@ -62,6 +63,13 @@ jobs:
       - name: Build from the build pack
         id: claude
         uses: anthropics/claude-code-action@v1
+        env:
+          # a self-hosted runner is a machine someone uses: Claude gets a home and a configuration of its own, cleared with
+          # the job — never the runner user's ~/.claude (plugins, MCP servers, settings, hooks), and the action's own settings
+          # (enableAllProjectMcpServers) and the Bun it installs land there, not in that user's (10.16.1). The service's own
+          # tool caches (Gradle, npm …) start empty under it: a slower build, never one that writes the user's home
+          HOME: ${{ runner.temp }}/claude-home
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-home/.claude
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.SA_BUILD_TOKEN }}
