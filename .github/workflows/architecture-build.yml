@@ -15,6 +15,8 @@
 #   variable SA_INDEX_MCP_URL         the architecture MCP server (…/mcp); without it, the server .architecture.json names
 #   variable SA_BUILD_RUNS_ON         optional, the runner as JSON (["self-hosted","sa-index"]) when only a runner of yours
 #                                     reaches the server; default ubuntu-latest
+#   variable SA_DOC_LANGUAGE          the architecture's language (en | es): the pull request, its commits and the issues the
+#                                     build files are written in it (ci-setup.js --settings); default en
 # The pull request it opens can merge without a person with architecture-build-merge.yml.
 name: Architecture build
 
@@ -78,7 +80,9 @@ jobs:
             Update this service from its build pack, through the architecture MCP server, following its BUILD.md — unattended:
             nobody answers a question. Work on a new branch and finish in a pull request on this repository; list every
             TODO(architecture), escalation and Tier 0 request under Architecture requests. If the build pack changed nothing
-            this service implements, change nothing and open no pull request.
+            this service implements, change nothing and open no pull request. Write the pull request's title and description,
+            the commit messages and every issue you file in ${{ vars.SA_DOC_LANGUAGE == 'es' && 'Spanish (Latin America)' || 'English' }}, the
+            architecture's language; identifiers, the architecture's names and the issue formats the server renders stay as they are.
           claude_args: |
             --mcp-config ${{ runner.temp }}/mcp.json
             --allowedTools "Read,Write,Edit,Glob,Grep,Bash,mcp__architecture"
