@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: "Servicio de Reservas API"
-  version: "1.0.0"
+  version: "1.1.0"
   description: |
     Servicio de Reservas expone la API REST de disponibilidad, reserva y cancelación de salas y aplica sus reglas.
     Concentra las reglas de reserva de las 42 salas de las 3 sedes y es la única puerta a sus datos (ADR-003).
@@ -128,6 +128,38 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /v1/bookings/{code}:
+    get:
+      summary: "Consultar reserva (CU3)"
+      description: "Devuelve el estado vigente de una reserva antes de pedir la confirmación de la cancelación (CU3, paso 1): la propia, o una de la `sede` del token con rol `recepcion` (ADR-105)."
+      operationId: "getBooking"
+      tags:
+        - "Servicio de Reservas"
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: "Código de la reserva: `RS-` seguido de 8 caracteres alfanuméricos."
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Reserva."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: "`BOOKING_NOT_FOUND`: código de reserva inexistente."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 
   /v1/bookings/{code}/cancel:
     post:

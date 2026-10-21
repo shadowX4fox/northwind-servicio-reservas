@@ -168,6 +168,13 @@ public class RepositorioReservas {
                 .update();
     }
 
+    public Optional<ReservaFila> reserva(String codigo) {
+        return jdbc.sql("SELECT " + COLUMNAS_RESERVA + " FROM reserva WHERE codigo = ?")
+                .param(codigo)
+                .query(RepositorioReservas::reserva)
+                .optional();
+    }
+
     public Optional<ReservaFila> reservaParaActualizar(String codigo) {
         return jdbc.sql("SELECT " + COLUMNAS_RESERVA + " FROM reserva WHERE codigo = ? FOR UPDATE")
                 .param(codigo)

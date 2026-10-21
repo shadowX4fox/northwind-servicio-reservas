@@ -12,7 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Valores que la arquitectura 1.7.0 no documenta y que el despliegue debe dar. Ninguno tiene
+ * Valores que la arquitectura 1.8.0 no documenta y que el despliegue debe dar. Ninguno tiene
  * valor por defecto: sin ellos el Servicio de Reservas no arranca, en lugar de suponerlos.
  *
  * @param token claims del JWT del Proveedor de Identidad Northwind
