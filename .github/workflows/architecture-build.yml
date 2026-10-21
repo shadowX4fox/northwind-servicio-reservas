@@ -1,0 +1,83 @@
+# Architecture build — GitHub Actions. Copy to .github/workflows/architecture-build.yml in a service repository bound to an
+# architecture (its .architecture.json, with "supervision": "unattended").
+#
+# The architecture repository dispatches `architecture-released` when it publishes a version with its build packs
+# (architecture-index.yml, variable SA_SERVICE_REPOS). Claude then updates this service from its build pack through the
+# architecture MCP server, following BUILD.md unattended: questions become TODO(architecture), escalations and Tier 0
+# requests are filed with the build's identity, and the work ends in a pull request. A run that finds nothing to change
+# opens none. Run it by hand (workflow_dispatch) for the first build or a retry.
+#
+# Repository settings:
+#   secret   CLAUDE_CODE_OAUTH_TOKEN  /install-github-app
+#   secret   SA_BUILD_TOKEN           the build agent's identity — a machine user's token or a GitHub App's — with write on this
+#                                     repository and issues on the architecture repository, which lists that identity in
+#                                     SA_TIER0_TRUSTED_AGENTS for the requests it may write without a person
+#   variable SA_INDEX_MCP_URL         the architecture MCP server (…/mcp); without it, the server .architecture.json names
+#   variable SA_BUILD_RUNS_ON         optional, the runner as JSON (["self-hosted","sa-index"]) when only a runner of yours
+#                                     reaches the server; default ubuntu-latest
+# The pull request it opens can merge without a person with architecture-build-merge.yml.
+name: Architecture build
+
+on:
+  repository_dispatch:
+    types: [architecture-released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The architecture version to build (empty — the latest the server holds)
+        required: false
+
+permissions: {}
+
+concurrency:
+  group: architecture-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ${{ fromJSON(vars.SA_BUILD_RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ secrets.SA_BUILD_TOKEN }}
+      VERSION: ${{ github.event.client_payload.version || inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SA_BUILD_TOKEN }}
+          fetch-depth: 0
+      - name: The architecture MCP server and the build's identity
+        env:
+          MCP_URL: ${{ vars.SA_INDEX_MCP_URL }}
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "::error::SA_BUILD_TOKEN is not set: the build has no identity to open its pull request and file its issues"; exit 1; }
+          url=${MCP_URL:-$(jq -r '.server // empty' .architecture.json)}
+          [ -n "$url" ] || { echo "::error::no MCP server: set SA_INDEX_MCP_URL or \"server\" in .architecture.json"; exit 1; }
+          [ "$(jq -r '.supervision // empty' .architecture.json)" = unattended ] || echo "::warning::.architecture.json does not declare \"supervision\": \"unattended\" — BUILD.md will ask questions nobody answers"
+          jq -n --arg url "$url" '{mcpServers: {architecture: {type: "http", url: $url}}}' > "$RUNNER_TEMP/mcp.json"
+          # a machine user's token reads /user; a GitHub App's does not, and the action then commits as the App
+          if me=$(gh api user --jq '.login' 2>/dev/null); then
+            git config user.name "$me"; git config user.email "$(gh api user --jq '.id')+$me@users.noreply.github.com"
+          else me="the token's App"; fi
+          echo "build identity: $me · server: $url"
+      - name: Build from the build pack
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.SA_BUILD_TOKEN }}
+          prompt: |
+            The architecture this service is bound to (.architecture.json) published ${{ env.VERSION && format('version {0}', env.VERSION) || 'a new version' }}.
+            Update this service from its build pack, through the architecture MCP server, following its BUILD.md — unattended:
+            nobody answers a question. Work on a new branch and finish in a pull request on this repository; list every
+            TODO(architecture), escalation and Tier 0 request under Architecture requests. If the build pack changed nothing
+            this service implements, change nothing and open no pull request.
+          claude_args: |
+            --mcp-config ${{ runner.temp }}/mcp.json
+            --allowedTools "Read,Write,Edit,Glob,Grep,Bash,mcp__architecture"
+      - name: Keep Claude's transcript
+        if: always() && steps.claude.outputs.execution_file != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-build-${{ github.run_id }}
+          path: ${{ steps.claude.outputs.execution_file }}
+          retention-days: 7
