@@ -174,10 +174,9 @@ public class ServicioReservas {
 
         LocalDateTime ahora = LocalDateTime.now(reloj);
         Franja franja = Franja.de(pedido.getDate(), pedido.getStart(), pedido.getEnd(), ahora);
-        // TODO(architecture): la respuesta a un `roomId` inexistente no está documentada; ningún `code`
-        // del contrato la nombra. Se responde VALIDATION_FAILED.
+        // Contrato 1.9.0: un `roomId` inexistente responde 404 ROOM_NOT_FOUND (CU2).
         SalaFila sala = repositorio.sala(pedido.getRoomId())
-                .orElseThrow(() -> ErrorDeNegocio.validacion("sala desconocida"));
+                .orElseThrow(() -> ErrorDeNegocio.salaNoEncontrada());
 
         // Fase 4, paso 3 — INV-04: un miembro no supera 3 reservas futuras por día.
         if (repositorio.reservasFuturasDelDia(miembro, franja.fecha(), ahora) >= LIMITE_DIARIO) {

@@ -1,7 +1,7 @@
 # Servicio de Reservas
 
 API REST de disponibilidad, reserva y cancelación de salas de **Reservas de Salas Northwind**, construida
-desde el build pack de la arquitectura **1.8.0** (binding en `.architecture.json`).
+desde el build pack de la arquitectura **1.9.0** (binding en `.architecture.json`).
 
 - **Contrato**: `architecture/openapi.yaml`, copia byte a byte del build pack. Es de solo lectura: las
   interfaces y los modelos de `northwind.reservas.api` se generan desde ella (`./gradlew openApiGenerate`).
