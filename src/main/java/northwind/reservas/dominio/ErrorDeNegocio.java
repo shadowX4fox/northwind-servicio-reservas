@@ -27,6 +27,10 @@ public class ErrorDeNegocio extends RuntimeException {
         return new ErrorDeNegocio(CodeEnum.BOOKING_NOT_FOUND, HttpStatus.NOT_FOUND, "reserva inexistente");
     }
 
+    public static ErrorDeNegocio salaNoEncontrada() {
+        return new ErrorDeNegocio(CodeEnum.ROOM_NOT_FOUND, HttpStatus.NOT_FOUND, "sala inexistente");
+    }
+
     public static ErrorDeNegocio salaOcupada() {
         return new ErrorDeNegocio(CodeEnum.ROOM_OCCUPIED, HttpStatus.CONFLICT, "sala ocupada");
     }

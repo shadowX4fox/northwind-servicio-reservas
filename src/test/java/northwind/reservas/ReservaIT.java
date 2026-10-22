@@ -145,6 +145,14 @@ class ReservaIT extends PruebaDeIntegracion {
     }
 
     @Test
+    void unaSalaInexistenteRespondeRoomNotFound() {
+        Respuesta r = reservar(token("miembro-1"), "sala-inexistente", "2026-11-03", "10:00", "11:00");
+
+        assertThat(r.estado()).isEqualTo(404);
+        assertThat(r.codigo()).isEqualTo("ROOM_NOT_FOUND");
+    }
+
+    @Test
     void unAsuntoDeMasDe80CaracteresRespondeValidationFailed() {
         Respuesta r = post("/v1/bookings", token("miembro-1"),
                 Map.of("roomId", "sala-c1", "date", "2026-11-03", "start", "10:00", "end", "11:00", "subject", "x".repeat(81)),
@@ -171,11 +179,6 @@ class ReservaIT extends PruebaDeIntegracion {
         assertThat(post("/v1/bookings", token("miembro-1"), cuerpo, Map.of("Idempotency-Key", "no-es-uuid")).codigo())
                 .isEqualTo("VALIDATION_FAILED");
         assertThat(reservasEnBase()).isZero();
-    }
-
-    @Test
-    void unaSalaDesconocidaRespondeValidationFailed() {
-        assertThat(reservar(token("miembro-1"), "sala-x", "2026-11-03", "10:00", "11:00").codigo()).isEqualTo("VALIDATION_FAILED");
     }
 
     private int reservasEnBase() {
