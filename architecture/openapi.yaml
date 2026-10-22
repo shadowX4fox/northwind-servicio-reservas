@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: "Servicio de Reservas API"
-  version: "1.1.0"
+  version: "1.2.0"
   description: |
     Servicio de Reservas expone la API REST de disponibilidad, reserva y cancelación de salas y aplica sus reglas.
     Concentra las reglas de reserva de las 42 salas de las 3 sedes y es la única puerta a sus datos (ADR-003).
@@ -96,6 +96,12 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: "`ROOM_NOT_FOUND`: `roomId` inexistente en la creación de la reserva (CU2)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '409':
           description: "`ROOM_OCCUPIED` (sala ocupada, ADR-102) o `DAILY_LIMIT_REACHED` (límite diario: 3 reservas futuras ese día)."
           content:
@@ -251,6 +257,7 @@ components:
             - FORBIDDEN
             - VALIDATION_FAILED
             - BOOKING_NOT_FOUND
+            - ROOM_NOT_FOUND
             - ROOM_OCCUPIED
             - DAILY_LIMIT_REACHED
             - BOOKING_IN_PROGRESS
