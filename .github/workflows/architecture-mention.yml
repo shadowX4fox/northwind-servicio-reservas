@@ -58,12 +58,15 @@ jobs:
         with:
           fetch-depth: 1
       - name: The architecture MCP server
+        id: mcp
         env:
           MCP_URL: ${{ vars.SA_INDEX_MCP_URL }}
         run: |
           url=${MCP_URL:-$(jq -r '.server // empty' .architecture.json 2>/dev/null)}
           [ -n "$url" ] || { echo "::error::no MCP server: set SA_INDEX_MCP_URL or \"server\" in .architecture.json"; exit 1; }
-          jq -n --arg url "$url" '{mcpServers: {architecture: {type: "http", url: $url}}}' > "$RUNNER_TEMP/mcp.json"
+          # inline JSON, never a file: in mention mode the action puts its own server (github_comment) first as inline JSON,
+          # and its merge drops a --mcp-config given as a file path beside one (10.20.2)
+          echo "config=$(jq -nc --arg url "$url" '{mcpServers: {architecture: {type: "http", url: $url}}}')" >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/claude-home/.claude"   # Claude's own home (the next step)
           echo "server: $url · component: $(jq -r '.component // "?"' .architecture.json)"
       - name: Answer the mention with the architecture
@@ -81,9 +84,9 @@ jobs:
           additional_permissions: |
             actions: read
           claude_args: |
-            --mcp-config ${{ runner.temp }}/mcp.json
+            --mcp-config '${{ steps.mcp.outputs.config }}'
             --allowedTools "Read,Write,Edit,Glob,Grep,Bash,mcp__architecture"
-            --append-system-prompt "This repository implements one component of an architecture: .architecture.json names the project, the component and the version it was built from. Before you change code, call get_build_pack with that project and component through the architecture MCP server and read its BUILD.md (get_build_part, part instructions); its rules bind every change you make here, whoever asked for it. A person asked: when a rule needs an answer, ask it in your reply. Keep every contract under architecture/ byte for byte; a change to a contract is the architecture's, never this repository's. When the request needs a departure from the architecture — a contract, a name, a rule, a budget, the security of an interface — do not implement it: call preview_escalation, put the issue it renders in your reply for a person to file in the architecture repository (this job cannot), and implement only what the architecture allows. Write your replies and commit messages in ${{ vars.SA_DOC_LANGUAGE == 'es' && 'Spanish (Latin America)' || 'English' }}, the architecture's language; identifiers and the architecture's names stay as they are."
+            --append-system-prompt "This repository implements one component of an architecture: .architecture.json names the project, the component and the version it was built from. Before you change code, call get_build_pack with that project and component through the architecture MCP server and read its BUILD.md (get_build_part, part instructions); its rules bind every change you make here, whoever asked for it. If the architecture server's tools are not available, say so in your reply and change nothing; never state that you read the build pack unless get_build_pack answered. A person asked: when a rule needs an answer, ask it in your reply. Keep every contract under architecture/ byte for byte; a change to a contract is the architecture's, never this repository's. When the request needs a departure from the architecture — a contract, a name, a rule, a budget, the security of an interface — do not implement it: call preview_escalation, put the issue it renders in your reply for a person to file in the architecture repository (this job cannot), and implement only what the architecture allows. Write your replies and commit messages in ${{ vars.SA_DOC_LANGUAGE == 'es' && 'Spanish (Latin America)' || 'English' }}, the architecture's language; identifiers and the architecture's names stay as they are."
       - name: Keep Claude's transcript
         if: always() && steps.claude.outputs.execution_file != ''
         uses: actions/upload-artifact@v4
