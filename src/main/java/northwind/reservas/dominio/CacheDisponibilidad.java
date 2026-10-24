@@ -16,7 +16,7 @@ import northwind.reservas.persistencia.RepositorioReservas.SalaFila;
 import org.springframework.stereotype.Component;
 
 /**
- * ADR-109 (antes ADR-108): la disponibilidad por sede y fecha en una caché Caffeine dentro de cada
+ * ADR-109: la disponibilidad por sede y fecha en una caché Caffeine dentro de cada
  * réplica del Servicio de Reservas. La entrada expira 5 minutos después de escribirse; al crear o
  * cancelar una reserva, todas las réplicas borran la suya ({@link EscuchaDisponibilidad}).
  */
