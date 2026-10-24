@@ -3,8 +3,9 @@
 # service team's policy, never the architecture's.
 #
 # It runs when the workflow named below completes on a pull request; it merges only a pull request the build agent opened
-# (variable SA_BUILD_AGENT, the login of SA_BUILD_TOKEN's identity), only at the commit those checks passed, and never a
-# draft. The merge lets a Tier 0 request the build filed with it — a TDR moved to Resolved — be written in the architecture
+# (variable SA_BUILD_AGENT, the login of SA_BUILD_TOKEN's identity), only at the commit those checks passed, never a
+# draft, and never a branch @claude wrote (claude/…, architecture-mention.yml): a person merges what a person asked for,
+# whoever opens its pull request (10.20.0). The merge lets a Tier 0 request the build filed with it — a TDR moved to Resolved — be written in the architecture
 # repository, which waits for it (architecture-tier0.yml).
 #
 # Repository settings: variable SA_BUILD_AGENT; variable SA_BUILD_MERGE_METHOD, optional — merge (default), squash or rebase.
@@ -39,6 +40,7 @@ jobs:
           [ -n "$pr" ] || { echo "no open pull request at $SHA on $BRANCH"; exit 0; }
           n=$(jq -r .number <<<"$pr"); author=$(jq -r .author.login <<<"$pr")
           [ "$(jq -r .isDraft <<<"$pr")" = false ] || { echo "#$n is a draft"; exit 0; }
+          case "$BRANCH" in claude/*) echo "#$n is on $BRANCH, a branch @claude wrote: a person merges it"; exit 0 ;; esac
           [ "${author,,}" = "${AGENT,,}" ] || { echo "#$n was opened by $author, not the build agent $AGENT: a person merges it"; exit 0; }
           gh pr merge "$n" -R "$GITHUB_REPOSITORY" "--$METHOD" --match-head-commit "$SHA"
           echo "merged #$n at $SHA ($METHOD)"

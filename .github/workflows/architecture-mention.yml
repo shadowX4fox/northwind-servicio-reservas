@@ -1,0 +1,92 @@
+# Architecture mention — GitHub Actions. Copy to .github/workflows/architecture-mention.yml in a service repository bound
+# to an architecture (its .architecture.json), attended or unattended.
+#
+# `@claude` in an issue, a pull request, a comment or a review asks Claude for a change, as the stock claude.yml does — with
+# the architecture: the MCP server the binding names, and the component's BUILD.md as standing rules. Claude reads the
+# build pack before it changes code, keeps the contracts under architecture/ byte for byte, and never departs from the
+# architecture: a request that needs a departure gets the escalation `preview_escalation` renders, in its reply, for a
+# person to file. A person asked, so a question is asked in the reply. The work ends on a branch with a link to open the
+# pull request (the action's default); a person merges it — architecture-build-merge.yml merges neither a claude/ branch
+# nor a pull request the build agent did not open.
+# Replaces the stock claude.yml: keep one workflow that answers @claude, or every mention runs twice.
+#
+# Only the repository's owner, members and collaborators start it: on a self-hosted runner a mention runs on a machine
+# of yours, so nobody else's comment queues a job (the action itself also requires write access).
+#
+# Repository settings:
+#   secret   CLAUDE_CODE_OAUTH_TOKEN  /install-github-app (the Claude GitHub App: its token commits and replies)
+#   variable SA_INDEX_MCP_URL         the architecture MCP server (…/mcp); without it, the server .architecture.json names
+#   variable SA_MENTION_RUNS_ON       optional, the runner as JSON (["self-hosted","sa-index"]) when only a runner of yours
+#                                     reaches the server; default ubuntu-latest
+#   variable SA_DOC_LANGUAGE          the architecture's language (en | es): Claude's replies and commits are written in it
+#                                     (ci-setup.js --settings); default en
+name: Architecture mention
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+concurrency:
+  group: architecture-mention-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
+    runs-on: ${{ fromJSON(vars.SA_MENTION_RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write   # the Claude GitHub App's token, exchanged by the action
+      actions: read     # Claude reads the CI results on a pull request
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: The architecture MCP server
+        env:
+          MCP_URL: ${{ vars.SA_INDEX_MCP_URL }}
+        run: |
+          url=${MCP_URL:-$(jq -r '.server // empty' .architecture.json 2>/dev/null)}
+          [ -n "$url" ] || { echo "::error::no MCP server: set SA_INDEX_MCP_URL or \"server\" in .architecture.json"; exit 1; }
+          jq -n --arg url "$url" '{mcpServers: {architecture: {type: "http", url: $url}}}' > "$RUNNER_TEMP/mcp.json"
+          mkdir -p "$RUNNER_TEMP/claude-home/.claude"   # Claude's own home (the next step)
+          echo "server: $url · component: $(jq -r '.component // "?"' .architecture.json)"
+      - name: Answer the mention with the architecture
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          # a self-hosted runner is a machine someone uses: Claude gets a home and a configuration of its own, cleared with
+          # the job — never the runner user's ~/.claude, and the Bun the action installs lands there (architecture-build.yml)
+          HOME: ${{ runner.temp }}/claude-home
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-home/.claude
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          branch_prefix: claude/   # architecture-build-merge.yml never merges a claude/ branch: a person merges it
+          additional_permissions: |
+            actions: read
+          claude_args: |
+            --mcp-config ${{ runner.temp }}/mcp.json
+            --allowedTools "Read,Write,Edit,Glob,Grep,Bash,mcp__architecture"
+            --append-system-prompt "This repository implements one component of an architecture: .architecture.json names the project, the component and the version it was built from. Before you change code, call get_build_pack with that project and component through the architecture MCP server and read its BUILD.md (get_build_part, part instructions); its rules bind every change you make here, whoever asked for it. A person asked: when a rule needs an answer, ask it in your reply. Keep every contract under architecture/ byte for byte; a change to a contract is the architecture's, never this repository's. When the request needs a departure from the architecture — a contract, a name, a rule, a budget, the security of an interface — do not implement it: call preview_escalation, put the issue it renders in your reply for a person to file in the architecture repository (this job cannot), and implement only what the architecture allows. Write your replies and commit messages in ${{ vars.SA_DOC_LANGUAGE == 'es' && 'Spanish (Latin America)' || 'English' }}, the architecture's language; identifiers and the architecture's names stay as they are."
+      - name: Keep Claude's transcript
+        if: always() && steps.claude.outputs.execution_file != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-mention-${{ github.run_id }}
+          path: ${{ steps.claude.outputs.execution_file }}
+          retention-days: 7
