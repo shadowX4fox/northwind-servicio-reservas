@@ -1,14 +1,14 @@
 # Architecture mention — GitHub Actions. Copy to .github/workflows/architecture-mention.yml in a service repository bound
 # to an architecture (its .architecture.json), attended or unattended.
 #
-# `@claude` in an issue, a pull request, a comment or a review asks Claude for a change, as the stock claude.yml does — with
-# the architecture: the MCP server the binding names, and the component's BUILD.md as standing rules. Claude reads the
+# `@alia` in an issue, a pull request, a comment or a review asks for a change, as `@claude` does in the stock claude.yml — with
+# the architecture (Claude does the work and replies as the Claude GitHub App): the MCP server the binding names, and the component's BUILD.md as standing rules. Claude reads the
 # build pack before it changes code, keeps the contracts under architecture/ byte for byte, and never departs from the
 # architecture: a request that needs a departure gets the escalation `preview_escalation` renders, in its reply, for a
 # person to file. A person asked, so a question is asked in the reply. The work ends on a branch with a link to open the
-# pull request (the action's default); a person merges it — architecture-build-merge.yml merges neither a claude/ branch
-# nor a pull request the build agent did not open.
-# Replaces the stock claude.yml: keep one workflow that answers @claude, or every mention runs twice.
+# pull request (the action's default), on an alia/ branch; a person merges it — architecture-build-merge.yml merges neither an
+# alia/ or claude/ branch nor a pull request the build agent did not open.
+# Its own phrase (10.20.1): the stock claude.yml may stay beside it, and @claude there still answers without the architecture.
 #
 # Only the repository's owner, members and collaborators start it: on a self-hosted runner a mention runs on a machine
 # of yours, so nobody else's comment queues a job (the action itself also requires write access).
@@ -41,10 +41,10 @@ concurrency:
 jobs:
   claude:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@alia') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@alia') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@alia') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@alia') || contains(github.event.issue.title, '@alia')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
     runs-on: ${{ fromJSON(vars.SA_MENTION_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 60
     permissions:
@@ -76,7 +76,8 @@ jobs:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-home/.claude
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          branch_prefix: claude/   # architecture-build-merge.yml never merges a claude/ branch: a person merges it
+          trigger_phrase: '@alia'
+          branch_prefix: alia/     # architecture-build-merge.yml never merges an alia/ branch: a person merges it
           additional_permissions: |
             actions: read
           claude_args: |
