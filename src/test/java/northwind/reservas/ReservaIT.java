@@ -153,9 +153,19 @@ class ReservaIT extends PruebaDeIntegracion {
     }
 
     @Test
-    void unAsuntoDeMasDe80CaracteresRespondeValidationFailed() {
+    void unAsuntoDeExactamente120CaracteresSeAcepta() {
         Respuesta r = post("/v1/bookings", token("miembro-1"),
-                Map.of("roomId", "sala-c1", "date", "2026-11-03", "start", "10:00", "end", "11:00", "subject", "x".repeat(81)),
+                Map.of("roomId", "sala-c1", "date", "2026-11-03", "start", "10:00", "end", "11:00", "subject", "x".repeat(120)),
+                Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+
+        assertThat(r.estado()).isEqualTo(201);
+        assertThat(r.cuerpo().path("subject").asText()).hasSize(120);
+    }
+
+    @Test
+    void unAsuntoDeMasDe120CaracteresRespondeValidationFailed() {
+        Respuesta r = post("/v1/bookings", token("miembro-1"),
+                Map.of("roomId", "sala-c1", "date", "2026-11-03", "start", "10:00", "end", "11:00", "subject", "x".repeat(121)),
                 Map.of("Idempotency-Key", UUID.randomUUID().toString()));
 
         assertThat(r.estado()).isEqualTo(400);
