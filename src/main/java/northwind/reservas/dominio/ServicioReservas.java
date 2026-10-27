@@ -174,7 +174,7 @@ public class ServicioReservas {
 
         LocalDateTime ahora = LocalDateTime.now(reloj);
         Franja franja = Franja.de(pedido.getDate(), pedido.getStart(), pedido.getEnd(), ahora);
-        // Contrato 1.9.1: un `roomId` inexistente responde 404 ROOM_NOT_FOUND (CU2).
+        // Contrato 1.10.0: un `roomId` inexistente responde 404 ROOM_NOT_FOUND (CU2).
         SalaFila sala = repositorio.sala(pedido.getRoomId())
                 .orElseThrow(() -> ErrorDeNegocio.salaNoEncontrada());
 
