@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: "Servicio de Reservas API"
-  version: "1.2.0"
+  version: "1.3.0"
   description: |
     Servicio de Reservas expone la API REST de disponibilidad, reserva y cancelación de salas y aplica sus reglas.
     Concentra las reglas de reserva de las 42 salas de las 3 sedes y es la única puerta a sus datos (ADR-003).
@@ -224,7 +224,7 @@ components:
 
   responses:
     ValidationFailed:
-      description: "`VALIDATION_FAILED`: franja fuera de múltiplos de 30 minutos, de más de 8 horas o en el pasado; asunto de más de 80 caracteres; motivo de menos de 10 o más de 120 caracteres, o ausente para `recepcion`."
+      description: "`VALIDATION_FAILED`: franja fuera de múltiplos de 30 minutos, de más de 8 horas o en el pasado; asunto de más de 120 caracteres; motivo de menos de 10 o más de 120 caracteres, o ausente para `recepcion`."
       content:
         application/problem+json:
           schema:
@@ -327,7 +327,7 @@ components:
           description: "`HH:mm` en hora local de la sede, sin desfase (ADR-110)."
         subject:
           type: string
-          maxLength: 80
+          maxLength: 120
 
     Booking:
       type: object
@@ -364,7 +364,7 @@ components:
           description: "`HH:mm` en hora local de la sede, sin desfase (ADR-110)."
         subject:
           type: string
-          maxLength: 80
+          maxLength: 120
         memberId:
           type: string
           description: "`sub` del JWT del Proveedor de Identidad Northwind (ADR-002)."
