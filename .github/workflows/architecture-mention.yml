@@ -20,6 +20,9 @@
 #                                     reaches the server; default ubuntu-latest
 #   variable SA_DOC_LANGUAGE          the architecture's language (en | es): Claude's replies and commits are written in it
 #                                     (ci-setup.js --settings); default en
+#   variable SA_ALIA_CLIENT_ID        optional, Alia's GitHub App (with the secret SA_ALIA_APP_KEY, its private key): she answers and
+#                                     commits as her App instead of the Claude GitHub App
+#                                     — docs/RUN_TEAMS.md § Alia on GitHub
 name: Architecture mention
 
 on:
@@ -69,6 +72,17 @@ jobs:
           echo "config=$(jq -nc --arg url "$url" '{mcpServers: {architecture: {type: "http", url: $url}}}')" >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/claude-home/.claude"   # Claude's own home (the next step)
           echo "server: $url · component: $(jq -r '.component // "?"' .architecture.json)"
+      - name: Alia's identity — her GitHub App, when this repository has one
+        id: alia
+        if: vars.SA_ALIA_CLIENT_ID != ''
+        continue-on-error: true      # no App, or not installed here: the replies stay the Claude GitHub App's
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SA_ALIA_CLIENT_ID }}
+          private-key: ${{ secrets.SA_ALIA_APP_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
       - name: Answer the mention with the architecture
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -79,6 +93,8 @@ jobs:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-home/.claude
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Alia answers as alia[bot] when this repository has her App (11.3.0); empty, the action takes the Claude GitHub App's token
+          github_token: ${{ steps.alia.outputs.token }}
           trigger_phrase: '@alia'
           branch_prefix: alia/     # architecture-build-merge.yml never merges an alia/ branch: a person merges it
           additional_permissions: |
