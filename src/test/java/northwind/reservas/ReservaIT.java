@@ -2,6 +2,7 @@ package northwind.reservas;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -11,9 +12,30 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /** CU2, fase 4 — INV-01 e INV-03 a INV-05; ADR-102 y ADR-103. */
 class ReservaIT extends PruebaDeIntegracion {
+
+    @Autowired
+    MeterRegistry metricas;
+
+    @Test
+    void publicaLasReservasRechazadasPorSuperposicionPorSede() {
+        double centro = rechazadas("centro");
+        double norte = rechazadas("norte");
+        reservar(token("miembro-1"), "sala-c1", "2026-11-03", "10:00", "11:00");
+
+        reservar(token("miembro-2"), "sala-c1", "2026-11-03", "10:30", "11:30");
+
+        assertThat(rechazadas("centro")).isEqualTo(centro + 1);
+        assertThat(rechazadas("norte")).isEqualTo(norte);
+    }
+
+    private double rechazadas(String sede) {
+        var c = metricas.find("reservas.rechazadas.superposicion").tag("sede", sede).counter();
+        return c == null ? 0 : c.count();
+    }
 
     @Test
     void creaUnaReservaConfirmada() {
