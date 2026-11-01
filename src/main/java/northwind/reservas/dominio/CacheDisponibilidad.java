@@ -2,12 +2,14 @@ package northwind.reservas.dominio;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Optional;
 import northwind.reservas.configuracion.PropiedadesReservas;
 import northwind.reservas.persistencia.RepositorioReservas;
@@ -33,9 +35,12 @@ public class CacheDisponibilidad {
 
     private final RepositorioReservas repositorio;
     private final Cache<Clave, Entrada> entradas;
+    private final MeterRegistry metricas;
 
-    public CacheDisponibilidad(RepositorioReservas repositorio, PropiedadesReservas propiedades, Clock reloj) {
+    public CacheDisponibilidad(
+            RepositorioReservas repositorio, PropiedadesReservas propiedades, Clock reloj, MeterRegistry metricas) {
         this.repositorio = repositorio;
+        this.metricas = metricas;
         this.entradas = Caffeine.newBuilder()
                 .expireAfterWrite(VIGENCIA_ENTRADA)
                 .maximumSize(propiedades.tamanoMaximoCacheDisponibilidad())
@@ -49,9 +54,29 @@ public class CacheDisponibilidad {
 
     /** La entrada vigente; sin ella, lee la Base de Datos de Reservas y la guarda. */
     Entrada entrada(Sede sede, LocalDate fecha) {
-        return entradas.get(new Clave(sede, fecha), c -> new Entrada(
-                List.copyOf(repositorio.salasDeSede(c.sede())),
-                List.copyOf(repositorio.ocupacionDeSede(c.sede(), c.fecha()))));
+        AtomicBoolean acierto = new AtomicBoolean(true);
+        Entrada entrada = entradas.get(new Clave(sede, fecha), c -> {
+            acierto.set(false);
+            return new Entrada(
+                    List.copyOf(repositorio.salasDeSede(c.sede())),
+                    List.copyOf(repositorio.ocupacionDeSede(c.sede(), c.fecha())));
+        });
+        contar(sede, acierto.get());
+        return entrada;
+    }
+
+    /**
+     * Spec § 7 (ADR-109): métrica operativa de la tasa de aciertos de la caché de disponibilidad, por
+     * sede. Se publican los aciertos y los fallos; la tasa es aciertos / (aciertos + fallos).
+     * TODO(architecture): el nombre de la métrica y su etiqueta no están documentados (spec § 7,
+     * "Métrica operativa de la tasa de aciertos de la caché de disponibilidad, por sede").
+     */
+    private void contar(Sede sede, boolean acierto) {
+        metricas.counter(
+                        "reservas.cache.disponibilidad",
+                        "sede", sede.valor(),
+                        "resultado", acierto ? "acierto" : "fallo")
+                .increment();
     }
 
     void invalidar(Sede sede, LocalDate fecha) {
