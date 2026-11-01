@@ -3,6 +3,7 @@ package northwind.reservas;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.postgresql.PGConnection;
 import org.postgresql.PGNotification;
 
@@ -23,6 +25,28 @@ class CacheDisponibilidadIT extends PruebaDeIntegracion {
 
     private static final String CONSULTA = "/v1/availability?site=centro&date=2026-11-03&start=10:00&end=11:00";
     private static final Duration ESPERA = Duration.ofSeconds(10);
+
+    @Autowired
+    MeterRegistry metricas;
+
+    @Test
+    void publicaAciertosYFallosDeLaCachePorSede() {
+        double fallos = contador("centro", "fallo");
+        double aciertos = contador("centro", "acierto");
+        double fallosNorte = contador("norte", "fallo");
+
+        estadoDe("sala-c1");
+        estadoDe("sala-c1");
+
+        assertThat(contador("centro", "fallo")).isEqualTo(fallos + 1);
+        assertThat(contador("centro", "acierto")).isEqualTo(aciertos + 1);
+        assertThat(contador("norte", "fallo")).isEqualTo(fallosNorte);
+    }
+
+    private double contador(String sede, String resultado) {
+        var c = metricas.find("reservas.cache.disponibilidad").tags("sede", sede, "resultado", resultado).counter();
+        return c == null ? 0 : c.count();
+    }
 
     @Test
     void elAvisoDeOtraReplicaBorraLaEntrada() {
