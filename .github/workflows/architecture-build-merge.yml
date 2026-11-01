@@ -2,7 +2,10 @@
 # that lets the architecture build's pull requests merge without a person, once its own checks pass. Opt in: this is the
 # service team's policy, never the architecture's.
 #
-# It runs when the workflow named below completes on a pull request; it merges only a pull request the build agent opened
+# It runs when a workflow named below completes on a pull request — the repository's tests, and with the architecture
+# review (11.4.0, `ci-setup.js --review`) that review too, whichever finishes last — and merges only when every check of
+# the pull request passed: a review HELD on an escalation stays pending and a FAIL fails, so neither merges. It merges
+# only a pull request the build agent opened
 # (variable SA_BUILD_AGENT, the login of SA_BUILD_TOKEN's identity), only at the commit those checks passed, never a
 # draft, and never a branch a mention wrote (alia/… from architecture-mention.yml, claude/… from the stock claude.yml): a
 # person merges what a person asked for, whoever opens its pull request (10.20.0). The merge lets a Tier 0 request the
@@ -15,14 +18,14 @@ name: Architecture build merge
 
 on:
   workflow_run:
-    workflows: ["Tests"]           # the name of this repository's test workflow — the checks the build's pull request passes
+    workflows: ["Tests", "Architecture review"]           # this repository's test workflow, and "Architecture review" when the review runs here
     types: [completed]
 
 permissions: {}
 
 jobs:
   merge:
-    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && vars.SA_BUILD_AGENT != ''
+    if: (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'pull_request_target') && github.event.workflow_run.conclusion == 'success' && vars.SA_BUILD_AGENT != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -43,5 +46,10 @@ jobs:
           [ "$(jq -r .isDraft <<<"$pr")" = false ] || { echo "#$n is a draft"; exit 0; }
           case "$BRANCH" in alia/*|claude/*) echo "#$n is on $BRANCH, a branch a mention wrote: a person merges it"; exit 0 ;; esac
           [ "${author,,}" = "${AGENT,,}" ] || { echo "#$n was opened by $author, not the build agent $AGENT: a person merges it"; exit 0; }
+          # every check and status of the pull request done and passed — the tests, the architecture review's verdict
+          wait=$(gh pr view "$n" -R "$GITHUB_REPOSITORY" --json statusCheckRollup --jq '[.statusCheckRollup[]
+            | select(((.conclusion // .state // "") | ascii_upcase) as $s | ["SUCCESS", "SKIPPED", "NEUTRAL"] | index($s) | not)
+            | (.name // .context)] | unique | join(", ")')
+          [ -z "$wait" ] || { echo "#$n waits on: $wait"; exit 0; }
           gh pr merge "$n" -R "$GITHUB_REPOSITORY" "--$METHOD" --match-head-commit "$SHA"
           echo "merged #$n at $SHA ($METHOD)"
