@@ -1,0 +1,264 @@
+# Architecture review — GitHub Actions. Copy to .github/workflows/architecture-review.yml in a service repository bound to an
+# architecture (.architecture.json) whose developers build it in an IDE — attended. Make "Architecture review" a required
+# status check of the default branch, and a pull request merges only when it keeps the build pack (10.16.0):
+#
+#   1. code      review-check.js: the contract copies under architecture/ are the pack's bytes, the contracts are committed
+#                alone, the commits name the version and the pack_revision, the binding is not behind; new TODO(architecture)
+#   2. judgement Claude reads the diff against the pack through the architecture MCP server — BUILD.md's rules: contracts
+#                exactly, the architecture's names, no gap filled, security never worked around, the standards and ADRs,
+#                budgets — and writes its findings, each citing the pack part
+#   3. verdict   review-check.js decides: a blocking finding stands unless an open [ESC-…] issue of the architecture
+#                repository (SA_ARCHITECTURE_REPO) that the pull request cites covers it; no findings fail closed. A pull
+#                request that passes only because an escalation covers it is HELD: the status stays pending, so it cannot
+#                merge before the architect answers (10.19.0). One comment on the pull request, updated on every run
+#
+# The pull request never runs its own review (10.16.2). pull_request_target runs this file as the default branch has it,
+# so a pull request that edits the review — the verdict's exit code, the prompt, the tools — is reviewed by the review in
+# force, and claude-code-action, which refuses a workflow that differs from the default branch's, runs. The pull request's
+# code is read as data and never executed (10.16.3, the action's own pattern for pull_request_target): the default branch
+# is checked out at the workspace root — Claude's working directory, its configuration, .sa-review/ and the MCP server's
+# URL are the default branch's — and the pull request's head into pr-head/, which Claude reads through --add-dir; neither
+# checkout keeps a credential, Claude has no shell, and review-check.js comes from the pinned plugin and runs outside both
+# (Bun reads bunfig.toml, preload included, from its working directory). The action works with this job's GITHUB_TOKEN —
+# no OIDC exchange, which pull_request_target refuses. The result is the commit status "Architecture review" on the pull
+# request's head commit — the required check. A pull request from a fork fails it.
+# The re-check (10.18.0): a HELD review stands on its escalation staying open. When an [ESC-…] issue
+# closes — or is transferred, deleted or retitled — the architecture repository's architecture-escalations.yml dispatches
+# architecture-escalation-closed here (its SA_SERVICE_REPOS lists this repository); the hourly schedule is the fallback. The
+# recheck job runs no model and checks out nothing: review-check.js --recheck reads the escalations each open pull request's
+# review comment records for its head, asks GitHub for their state, and fails the status of a pull request one no longer covers.
+# On a self-hosted runner Claude never loads the runner user's ~/.claude: its step has a HOME and CLAUDE_CONFIG_DIR of its
+# own, where the action also installs its Bun; this job's own Bun has another (setup-bun writes $HOME/.bun).
+#
+# Repository settings:
+#   secret   CLAUDE_CODE_OAUTH_TOKEN  /install-github-app
+#   variable SA_ARCHITECTURE_REPO     owner/repo of the architecture — where an escalation that clears a finding lives
+#   variable SA_INDEX_MCP_URL         the architecture MCP server (…/mcp); without it, the server .architecture.json names
+#   variable SA_DOC_LANGUAGE          the architecture's language (en | es): the review, its comment and its status speak it
+#                                     (ci-setup.js --settings reads it from the architecture's ARCHITECTURE.md); default en
+#   variable SA_REVIEW_RUNS_ON        optional, the runner as JSON (["self-hosted","sa-index"]) when only a runner of yours
+#                                     reaches the server; default ubuntu-latest
+#   secret   SA_INDEX_TOKEN           optional, when the server asks for a bearer token
+#   variable SA_ALIA_CLIENT_ID        optional, Alia's GitHub App (with the secret SA_ALIA_APP_KEY, its private key): the review comment
+#                                     posts as her App; the commit status stays GITHUB_TOKEN's
+#                                     — docs/RUN_TEAMS.md § Alia on GitHub
+#   branch protection: "Architecture review" required on the default branch
+name: Architecture review
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]   # edited: the body may now cite an escalation
+  repository_dispatch:
+    types: [architecture-escalation-closed]   # the architecture repository: an [ESC-…] issue closed, transferred, deleted, retitled
+  # the fallback sweep, for a dispatch that never came. GitHub disables a public repository's schedule after 60 days without
+  # activity and says nothing: ci-setup.js service … --review reports it, gh workflow enable architecture-review.yml restores it
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: architecture-review-${{ github.event.pull_request.number || 'recheck' }}
+  cancel-in-progress: true
+
+env:
+  SA_PLUGIN_REF: v11.4.0
+  SA_PLUGIN_REPO: https://github.com/shadowx4fox/solutions-architect-skills.git
+
+jobs:
+  recheck:
+    name: recheck
+    if: github.event_name != 'pull_request_target'
+    runs-on: ${{ fromJSON(vars.SA_REVIEW_RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write         # the review comment gets the line that says why it failed
+      issues: read
+      statuses: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SA_DOC_LANGUAGE: ${{ vars.SA_DOC_LANGUAGE }}
+      ESCALATION: ${{ github.event.client_payload.ref }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: oven-sh/setup-bun@v2
+        id: bun
+        env:
+          HOME: ${{ runner.temp }}/bun-home
+        with:
+          bun-version: 1.4.4
+      - name: Alia's identity — her GitHub App, when this repository has one
+        id: alia
+        if: vars.SA_ALIA_CLIENT_ID != ''
+        continue-on-error: true      # no App, or not installed here: the comments stay github-actions[bot]'s
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SA_ALIA_CLIENT_ID }}
+          private-key: ${{ secrets.SA_ALIA_APP_KEY }}
+          permission-issues: write
+          permission-pull-requests: write
+      - name: The pull requests an escalation cleared, held to it again
+        env:
+          ALIA_TOKEN: ${{ steps.alia.outputs.token }}
+          ALIA: ${{ steps.alia.outputs.app-slug }}
+        run: |
+          [ -n "$ESCALATION" ] && echo "escalation: $ESCALATION ${{ github.event.client_payload.action }}"
+          git clone --quiet --depth 1 --branch "$SA_PLUGIN_REF" "$SA_PLUGIN_REPO" "$RUNNER_TEMP/sa"
+          cd "$RUNNER_TEMP" && "${{ steps.bun.outputs.bun-path }}" "$RUNNER_TEMP/sa/plugins/sa-delivery/skills/architecture-index-export/scripts/review-check.js" --recheck "$GITHUB_REPOSITORY" --run-url "$RUN_URL" ${ALIA:+--author "$ALIA[bot]"}
+  review:
+    name: review
+    if: github.event_name == 'pull_request_target'
+    runs-on: ${{ fromJSON(vars.SA_REVIEW_RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      statuses: write              # the result: the commit status "Architecture review" on the head commit
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SA_ARCHITECTURE_REPO: ${{ vars.SA_ARCHITECTURE_REPO }}
+      SA_INDEX_MCP_URL: ${{ vars.SA_INDEX_MCP_URL }}
+      SA_INDEX_TOKEN: ${{ secrets.SA_INDEX_TOKEN }}
+      SA_DOC_LANGUAGE: ${{ vars.SA_DOC_LANGUAGE }}
+      BASE: ${{ github.event.pull_request.base.sha }}
+      HEAD: ${{ github.event.pull_request.head.sha }}
+      PR: ${{ github.event.pull_request.number }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Reviewing
+        run: gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=pending -f context="Architecture review" -f description="${{ vars.SA_DOC_LANGUAGE == 'es' && 'contrastando con el build pack' || 'held to the build pack' }}" -f target_url="$RUN_URL" > /dev/null
+      - name: A pull request of this repository
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=failure -f context="Architecture review" -f description="${{ vars.SA_DOC_LANGUAGE == 'es' && 'un fork no se revisa: súbalo a una rama de este repositorio' || 'a fork is not reviewed: push it to a branch here' }}" -f target_url="$RUN_URL" > /dev/null
+          echo "::error::a pull request from a fork is not reviewed here — a maintainer pushes it to a branch of this repository"
+          exit 1
+      - uses: actions/checkout@v4      # the default branch at the root: the action expects a repository there, and runs in it
+        with:
+          persist-credentials: false   # Claude reads the checkouts: no token in a .git/config
+      - uses: actions/checkout@v4      # the pull request, as data
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-head
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        id: bun
+        env:
+          HOME: ${{ runner.temp }}/bun-home   # setup-bun installs into $HOME/.bun: never the runner user's own Bun
+        with:
+          bun-version: 1.4.4
+      - name: The plugin, the MCP server, the diff
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          git clone --quiet --depth 1 --branch "$SA_PLUGIN_REF" "$SA_PLUGIN_REPO" "$RUNNER_TEMP/sa"
+          # the server the default branch binds — never one the pull request names
+          url=${SA_INDEX_MCP_URL:-$(jq -r '.server // empty' .architecture.json 2>/dev/null)}
+          [ -n "$url" ] || { echo "::error::no MCP server: set SA_INDEX_MCP_URL or \"server\" in .architecture.json"; exit 1; }
+          if [ -n "$SA_INDEX_TOKEN" ]; then
+            jq -n --arg url "$url" --arg t "Bearer $SA_INDEX_TOKEN" '{mcpServers: {architecture: {type: "http", url: $url, headers: {Authorization: $t}}}}' > "$RUNNER_TEMP/mcp.json"
+          else jq -n --arg url "$url" '{mcpServers: {architecture: {type: "http", url: $url}}}' > "$RUNNER_TEMP/mcp.json"; fi
+          echo "SA_INDEX_MCP_URL=$url" >> "$GITHUB_ENV"
+          # what Claude reads beside pr-head/ — in the default branch's checkout, made fresh on every run
+          rm -rf .sa-review && mkdir -p .sa-review "$RUNNER_TEMP/claude-home/.claude"   # Claude's own home (the next step)
+          git -C pr-head diff "$BASE...HEAD" > .sa-review/pr.diff
+          printf '%s\n' "$BODY" > .sa-review/pr-body.md
+      - name: Review the diff against the build pack
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          # a self-hosted runner is a machine someone uses: Claude gets a home and a configuration of its own, cleared with
+          # the job — never the runner user's ~/.claude (plugins, MCP servers, settings, hooks), and the action's own settings
+          # (enableAllProjectMcpServers) and the Bun it installs land there, not in that user's (10.16.1)
+          HOME: ${{ runner.temp }}/claude-home
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-home/.claude
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} of this repository against its architecture build pack.
+            You only review: change no code, and write nothing but .sa-review/findings.json.
+
+            The pull request's files are under pr-head/ (its head commit); the working directory is the default branch.
+            1. Read pr-head/.architecture.json (project, component, architecture_version). Call get_build_pack for that component at
+               that version, then get_build_part for "instructions" (BUILD.md, whose rules you apply) and for every part the
+               diff touches: the spec, security, the interfaces, cross-cutting-standards, the adr: parts.
+            2. Read .sa-review/pr.diff (this pull request's changes) and .sa-review/pr-body.md (its description). Read a
+               changed file under pr-head/ when the diff alone is not enough.
+            3. Find what this diff does that the pack does not allow, against BUILD.md's rules: 1 a contract not implemented
+               exactly (a path, operation, field, type, name or status differs); 2 a component not called by its canonical
+               name; 3 a gap filled — a value, limit, timeout or behaviour the pack does not state, where a TODO(architecture)
+               or a question belongs; 4 security worked around — a caller let in that the security part does not list, an
+               interface without documented authentication left open; 5 a cross-cutting standard or a governing ADR not
+               followed (errors, versioning, identity, idempotency, observability, resilience); 6 a budget ignored; 9, 10
+               an architecture question answered locally instead of escalated, a Tier 0 write made here. Judge only what
+               this diff changes, never code it does not touch.
+            4. Write .sa-review/findings.json, exactly:
+               {"reviewed": true, "findings": [{"rule": <n>, "severity": "blocking" | "warning", "file": "<path>",
+                 "line": <n>, "part": "<the pack part id, e.g. spec, security, interface:…, adr:ADR-001>", "part_line": <n>,
+                 "finding": "<one sentence: what the code does, and what the part states>", "escalation": "<owner/repo#N or null>"}]}
+               Blocking: the diff departs from something a part states. Warning: a doubt, or a departure you cannot pin to a
+               line of a part. Cite the part every time. When the description cites an [ESC-…] issue that asks the
+               architect about exactly this departure, put it in "escalation". An empty list when the diff keeps the pack.
+               Write every "finding" in ${{ vars.SA_DOC_LANGUAGE == 'es' && 'Spanish (Latin America)' || 'English' }}, the architecture's language; the
+               rule numbers, part ids, file paths, code and the architecture's names stay as they are.
+          claude_args: |
+            --mcp-config ${{ runner.temp }}/mcp.json
+            --add-dir pr-head
+            --allowedTools "Read(./**),Glob,Grep,Edit(./.sa-review/findings.json),mcp__architecture"
+            --disallowedTools "Bash,WebFetch,WebSearch"
+      - name: Keep Claude's transcript
+        if: always() && steps.claude.outputs.execution_file != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-review-${{ github.run_id }}
+          path: ${{ steps.claude.outputs.execution_file }}
+          retention-days: 7
+      - name: Alia's identity — her GitHub App, when this repository has one
+        id: alia
+        if: always() && vars.SA_ALIA_CLIENT_ID != '' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true      # no App, or not installed here: the comments stay github-actions[bot]'s
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SA_ALIA_CLIENT_ID }}
+          private-key: ${{ secrets.SA_ALIA_APP_KEY }}
+          permission-issues: write
+          permission-pull-requests: write
+      - name: The verdict
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          ALIA_TOKEN: ${{ steps.alia.outputs.token }}
+          ALIA: ${{ steps.alia.outputs.app-slug }}
+        run: |
+          set +e
+          W="$GITHUB_WORKSPACE"
+          # this job's Bun by its path (claude-code-action installs a Bun of its own, first on PATH after it), run outside the
+          # checkouts: Bun reads bunfig.toml from its working directory. The pull request's binding, the default branch's server
+          ( cd "$RUNNER_TEMP" && "${{ steps.bun.outputs.bun-path }}" "$RUNNER_TEMP/sa/plugins/sa-delivery/skills/architecture-index-export/scripts/review-check.js" "$W/pr-head" --base "$BASE" \
+            --server "$SA_INDEX_MCP_URL" --findings "$W/.sa-review/findings.json" --body-file "$W/.sa-review/pr-body.md" --out "$RUNNER_TEMP/review.md" --status-out "$RUNNER_TEMP/status.txt" > /dev/null )
+          verdict=$?
+          [ -s "$RUNNER_TEMP/review.md" ] || { echo "::error::review-check.js wrote no review (exit $verdict)"; exit 1; }
+          cat "$RUNNER_TEMP/review.md" >> "$GITHUB_STEP_SUMMARY"
+          # one comment, updated on every run — this job's own, never another author's: Alia's App when this repository has one
+          # (11.3.0), else GITHUB_TOKEN's github-actions[bot]; the commit status below stays GITHUB_TOKEN's, the source the
+          # required check names
+          me="${ALIA:+$ALIA[bot]}"; me="${me:-github-actions[bot]}"
+          say() { GH_TOKEN="${ALIA_TOKEN:-$GH_TOKEN}" gh "$@"; }
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq ".[] | select(.user.login == \"$me\" and (.body | startswith(\"<!-- sa-architecture-review -->\"))) | .id" | head -n 1)
+          if [ -n "$id" ]; then say api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@"$RUNNER_TEMP/review.md" > /dev/null
+          else say pr comment "$PR" -R "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/review.md"; fi
+          # HELD (3): nothing blocks, an open escalation is waited on — pending keeps a required check from letting it merge
+          state=$(case "$verdict" in 0) echo success ;; 3) echo pending ;; *) echo failure ;; esac)
+          summary=$(head -n 1 "$RUNNER_TEMP/status.txt" 2>/dev/null)
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state="$state" -f context="Architecture review" -f description="${summary:-${{ vars.SA_DOC_LANGUAGE == 'es' && 'vea la revisión' || 'see the review' }}}" -f target_url="$RUN_URL" > /dev/null
+          touch "$RUNNER_TEMP/status-posted"
+          [ "$verdict" -eq 3 ] && exit 0
+          exit $verdict
+      - name: The status, when the verdict never ran
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          [ -e "$RUNNER_TEMP/status-posted" ] && exit 0
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=failure -f context="Architecture review" -f description="${{ vars.SA_DOC_LANGUAGE == 'es' && 'la revisión no terminó: vuelva a ejecutarla' || 'the review did not finish: re-run it' }}" -f target_url="$RUN_URL" > /dev/null
