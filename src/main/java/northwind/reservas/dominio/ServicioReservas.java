@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.SecureRandom;
 import java.sql.SQLException;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -50,6 +51,7 @@ public class ServicioReservas {
     private final TransactionTemplate transaccion;
     private final ObjectMapper json;
     private final Clock reloj;
+    private final MeterRegistry metricas;
     private final SecureRandom aleatorio = new SecureRandom();
 
     public ServicioReservas(
@@ -57,7 +59,9 @@ public class ServicioReservas {
             CacheDisponibilidad cache,
             TransactionTemplate transaccion,
             ObjectMapper json,
-            Clock reloj) {
+            Clock reloj,
+            MeterRegistry metricas) {
+        this.metricas = metricas;
         this.repositorio = repositorio;
         this.cache = cache;
         this.transaccion = transaccion;
@@ -191,6 +195,7 @@ public class ServicioReservas {
         } catch (DataIntegrityViolationException e) {
             // Fase 4, paso 5 — ADR-102, INV-03: la base rechaza la superposición; el código no la coordina.
             if (VIOLACION_DE_EXCLUSION.equals(estadoSql(e))) {
+                contarSuperposicion(reserva.sede());
                 throw ErrorDeNegocio.salaOcupada();
             }
             throw e;
@@ -207,6 +212,15 @@ public class ServicioReservas {
         // `creada_en`, y este log sin datos personales.
         log.info("reserva creada: codigo={} sede={}", reserva.codigo(), reserva.sede());
         return creada;
+    }
+
+    /**
+     * Spec § 7 (ADR-102): métrica operativa de reservas rechazadas por superposición, por sede.
+     * TODO(architecture): el nombre de la métrica y su etiqueta no están documentados (spec § 7,
+     * "Métrica operativa de reservas rechazadas por superposición, por sede").
+     */
+    private void contarSuperposicion(String sede) {
+        metricas.counter("reservas.rechazadas.superposicion", "sede", sede).increment();
     }
 
     private Optional<Booking> respuestaGuardada(String miembro, UUID clave) {
