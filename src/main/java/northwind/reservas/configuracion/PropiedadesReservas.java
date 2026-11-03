@@ -15,7 +15,7 @@ import org.springframework.validation.annotation.Validated;
  * Valores que la arquitectura 1.10.0 no documenta y que el despliegue debe dar. Ninguno tiene
  * valor por defecto: sin ellos el Servicio de Reservas no arranca, en lugar de suponerlos.
  *
- * @param token claims del JWT del Proveedor de Identidad Northwind
+ * @param token claims del JWT del Servidor de Identidad Northwind
  * @param intervaloPurgaClaves TODO(architecture): TDR-002 (opción B) pide que el Servicio de Reservas
  *     borre las claves de idempotencia vencidas "de forma periódica", pero no documenta cada cuánto.
  * @param tamanoMaximoCacheDisponibilidad TODO(architecture): ADR-109 dice "Tamaño máximo de la caché:
@@ -33,7 +33,7 @@ public record PropiedadesReservas(
         @NotNull @DurationMin(millis = 1) Duration esperaReconexionEscucha) {
 
     /**
-     * @param jwkSetUri endpoint JWKS del Proveedor de Identidad Northwind (I-03, ADR-002)
+     * @param jwkSetUri endpoint JWKS del Servidor de Identidad Northwind (I-03, ADR-002)
      * @param claimRoles TODO(architecture): ruta del claim que lleva el rol `recepcion` (ADR-105
      *     dice que "el rol `recepcion` y el atributo `sede` vienen en el token" pero no en qué
      *     claim). Ruta con puntos, por ejemplo una ruta anidada a una lista de roles.

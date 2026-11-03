@@ -55,7 +55,7 @@ class SeguridadIT extends PruebaDeIntegracion {
 
     @Test
     void sinClavesJwksDisponiblesLaSolicitudSeRechaza() {
-        // T7-D, I-03: una clave que la caché no tiene obliga a pedir el JWKS; el proveedor no responde.
+        // T6-D, I-03: una clave que la caché no tiene obliga a pedir el JWKS; el proveedor no responde.
         JWKS_DISPONIBLE.set(false);
         RSAKey nueva = nuevaClave("clave-desconocida");
 
