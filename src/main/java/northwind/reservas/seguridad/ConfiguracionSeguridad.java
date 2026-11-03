@@ -35,7 +35,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * Obligaciones de seguridad del Servicio de Reservas (part `security`): denegar por defecto; solo el
  * Portal de Reservas llama, por I-02, con un JWT RS256 validado con JWKS en cada solicitud (ADR-002).
  *
- * <p>TODO(architecture): T4-D "Saturación de solicitudes sin autenticar contra la API pública" — el
+ * <p>TODO(architecture): T4-D "Saturación del Servicio de Reservas por volumen de solicitudes públicas en I-02" — el
  * límite de tasa por IP y cliente va en el ingress; el "límite por usuario en el servicio" y el máximo
  * de réplicas del HPA no tienen valor documentado, así que el servicio no aplica ninguno.
  */
