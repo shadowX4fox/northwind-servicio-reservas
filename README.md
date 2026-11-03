@@ -1,7 +1,7 @@
 # Servicio de Reservas
 
 API REST de disponibilidad, reserva y cancelación de salas de **Reservas de Salas Northwind**, construida
-desde el build pack de la arquitectura **1.10.4** (binding en `.architecture.json`).
+desde el build pack de la arquitectura **1.11.0** (binding en `.architecture.json`).
 
 - **Contrato**: `architecture/openapi.yaml`, copia byte a byte del build pack. Es de solo lectura: las
   interfaces y los modelos de `northwind.reservas.api` se generan desde ella (`./gradlew openApiGenerate`).
@@ -15,7 +15,7 @@ Lo que la arquitectura no documenta no tiene valor por defecto: si falta, el ser
 |---|---|
 | `RESERVAS_DB_URL`, `RESERVAS_DB_USUARIO`, `RESERVAS_DB_CLAVE` | Base de Datos de Reservas (I-04), desde el gestor de secretos del clúster (ADR-005) |
 | `RESERVAS_DB_SSLMODE` | TLS de JDBC; por defecto `verify-full` |
-| `RESERVAS_JWKS_URI` | Endpoint JWKS del Proveedor de Identidad Northwind (I-03) |
+| `RESERVAS_JWKS_URI` | Endpoint JWKS del Servidor de Identidad Northwind (I-03) |
 | `RESERVAS_CLAIM_ROLES` | Ruta del claim con el rol `recepcion` (no documentada) |
 | `RESERVAS_CLAIM_SEDE` | Claim del atributo `sede` (no documentado) |
 | `RESERVAS_CLAIM_CLIENTE`, `RESERVAS_CLIENTES_PERMITIDOS` | Cómo se reconoce al Portal de Reservas, el único llamador (no documentado) |

@@ -47,7 +47,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * Base de las pruebas: el Servicio de Reservas real, con una Base de Datos de Reservas PostgreSQL 16
- * y un endpoint JWKS que hace de Proveedor de Identidad Northwind.
+ * y un endpoint JWKS que hace de Servidor de Identidad Northwind.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(PruebaDeIntegracion.RelojDePrueba.class)
